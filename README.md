@@ -7,3 +7,5 @@ This is the frontend for the Everything App
 - React.js
 - Next.js
 - NextAuth.js
+- Prisma
+- PostgreSQL
