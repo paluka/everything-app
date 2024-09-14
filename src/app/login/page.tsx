@@ -2,12 +2,14 @@
 
 "use client";
 
-import { getProviders, signIn } from "next-auth/react";
+import { getProviders, signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import Footer from "../components/footer/footer";
 
 const LoginPage = () => {
+  const { data: session, status } = useSession();
   const [providers, setProviders] = useState<Record<string, any>>({});
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchProviders() {
@@ -20,6 +22,15 @@ const LoginPage = () => {
 
     fetchProviders();
   }, []);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (session) router.push("/profile");
+  }, [session, status, router]);
+
+  if (status === "loading" || session) {
+    return <p>Loading...</p>; // Show a loading message while session is being checked
+  }
 
   return (
     <div>
@@ -35,7 +46,6 @@ const LoginPage = () => {
             </button>
           </div>
         ))}
-      <Footer />
     </div>
   );
 };

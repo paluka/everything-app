@@ -5,7 +5,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import Footer from "../components/footer/footer";
+import Image from "next/image";
 
 const ProfilePage = () => {
   const { data: session, status } = useSession();
@@ -25,6 +25,16 @@ const ProfilePage = () => {
       {session ? (
         <div>
           <h1>Welcome, {session.user?.name}</h1>
+
+          {session.user?.image && (
+            <Image
+              src={session.user?.image}
+              alt="Profile Image"
+              width={100}
+              height={100}
+            />
+          )}
+
           <button onClick={() => signOut({ callbackUrl: "/" })}>
             Sign out
           </button>
@@ -32,7 +42,6 @@ const ProfilePage = () => {
       ) : (
         <p>Redirecting...</p>
       )}
-      <Footer />
     </div>
   );
 };
