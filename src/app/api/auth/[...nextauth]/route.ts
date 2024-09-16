@@ -1,9 +1,10 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import type { NextAuthOptions, Session, Token } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
+import { getSession } from "next-auth/react";
 
 // import { ISession, IToken } from "@/types/auth";
 
@@ -23,38 +24,44 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt", // Use JWT for session management
   },
-  pages: {
-    signIn: "/profile",
-    signOut: "/login",
-    // error: "/error",
-    // verifyRequest: "/verify-request",
-    // newUser: "/new-user",
-  },
+  // pages: {
+  //   signIn: "/profile",
+  //   signOut: "/login",
+  //   // error: "/error",
+  //   // verifyRequest: "/verify-request",
+  //   // newUser: "/new-user",
+  // },
   callbacks: {
-    async session({ session, token }) {
-      console.log("session callback", session, token);
-      // Add custom properties to the session object
-      if (token) {
-        (session as Session).user.id = (token as Token).id;
+    async redirect({ url, baseUrl }) {
+      console.log("redirect callback", url, baseUrl);
+      // If the URL is the sign-in page, redirect to the user's profile
+      if (url === "/login") {
+        console.log("redirect callback", url, baseUrl);
+        const session = await getSession();
+        if (session?.user?.id) {
+          console.log("redirect callback", session.user.id);
+          // Redirect to the user's profile page
+          return `${baseUrl}/profiles/${session.user.id}`;
+        }
+      }
+      return baseUrl;
+    },
+    async session({ session, token, user }) {
+      console.log("Session callback:", { session, token, user });
+
+      if (token?.sub) {
+        session.user.id = token.sub;
       }
       return session;
     },
-    async jwt({ token, user }) {
-      console.log("jwt callback", token, user);
-      // Add custom properties to the token object
+    async jwt({ token, user, account, profile }) {
+      console.log("JWT callback:", { token, user, account, profile });
+
       if (user?.id) {
         token.id = user.id;
       }
       return token;
     },
-    // async redirect({ url, baseUrl }) {
-    //   console.log("redirect callback", url, baseUrl);
-    //   // Allows relative callback URLs
-    //   if (url.startsWith("/")) return `${baseUrl}${url}`;
-    //   // Allows callback URLs on the same origin
-    //   else if (new URL(url).origin === baseUrl) return url;
-    //   return baseUrl;
-    // },
   },
 };
 

@@ -25,10 +25,10 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (status === "loading") return;
-    if (session) router.push("/profile");
+    // if (session) router.push("/profile");
   }, [session, status, router]);
 
-  if (status === "loading" || session) {
+  if (status === "loading") {
     return <p>Loading...</p>; // Show a loading message while session is being checked
   }
 
@@ -39,9 +39,7 @@ const LoginPage = () => {
       {providers &&
         Object.values(providers).map((provider) => (
           <div key={provider.name}>
-            <button
-              onClick={() => signIn(provider.id, { callbackUrl: "/profile" })}
-            >
+            <button onClick={() => signIn(provider.id, { redirect: true })}>
               Sign in with {provider.name}
             </button>
           </div>
