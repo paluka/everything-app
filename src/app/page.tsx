@@ -22,7 +22,8 @@ export default function Home() {
     setIsLoading(true);
 
     async function fetchUsers() {
-      fetch("/api/profiles")
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users`)
+        // fetch("/api/profiles")
         .then((res) => res.json())
         .then((data) => setUsers(data))
         .catch((error) => {
