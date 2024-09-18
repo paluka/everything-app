@@ -169,3 +169,29 @@ a.secondary {
     filter: invert(1);
   }
 }
+
+.postsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid var(--gray-alpha-200);
+  padding: 8px;
+
+  &:hover {
+    background-color: var(--gray-alpha-100);
+    transition: background-color 0.2s;
+    border: 1px solid var(--gray-alpha-100);
+  }
+
+  .singlePostContainer {
+    display: flex;
+    gap: 8px;
+  }
+
+  .postDate {
+    font-size: 12px;
+  }
+}
