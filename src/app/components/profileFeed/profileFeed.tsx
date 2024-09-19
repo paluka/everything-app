@@ -23,7 +23,10 @@ const ProfileFeed = ({ userId }: { userId: string }) => {
     setIsLoading(true);
 
     const fetchPosts = async () => {
-      await fetch(`/api/post?userId=${userId}`)
+      await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/posts?userId=${userId}`
+      )
+        // await fetch(`/api/post?userId=${userId}`)
         .then((res) => res.json())
         .then((data) => setPosts(data))
         .catch((error) => {

@@ -43,7 +43,10 @@ const ProfilePage = () => {
 
       const fetchProfile = async () => {
         try {
-          const response = await fetch(`/api/profiles/${userIdString}`);
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/users/${userIdString}`
+          );
+          // const response = await fetch(`/api/profiles/${userIdString}`);
           if (!response.ok) {
             throw new Error("Profile not found");
           }

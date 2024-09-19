@@ -15,13 +15,17 @@ function CreatePost({ userId }: { userId: string }) {
     setError(false);
     setIsLoading(true);
 
-    const response = await fetch("/api/post", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ content, userId }),
-    })
+    // const response = await fetch("/api/post", {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/posts`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content, userId }),
+      }
+    )
       .then((res) => res.json())
       .catch((error) => {
         setError(error.message);
