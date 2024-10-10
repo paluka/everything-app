@@ -18,6 +18,10 @@ interface UserProfile {
 }
 
 const ProfilePage = () => {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+
   const { data: session, status } = useSession();
   const router = useRouter();
   const { userId } = useParams();
@@ -28,10 +32,6 @@ const ProfilePage = () => {
   } else {
     userIdString = userId;
   }
-
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
 
   useEffect(() => {
     if (status === "loading") return; // Do nothing while loading
@@ -75,8 +75,8 @@ const ProfilePage = () => {
     return <p>Loading...</p>; // Show a loading message while session is being checked
   }
 
-  console.log("session", session);
-  console.log("userIdString", userIdString);
+  // console.log("session", session);
+  // console.log("userIdString", userIdString);
   const userIsProfileOwner = session?.user?.id ?? "" == userIdString;
 
   const imageUrl =
