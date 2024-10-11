@@ -1,11 +1,12 @@
 "use client";
 
-import { formatDate } from "@/utils/formatDate";
-import { User } from "next-auth";
 import { useEffect, useState } from "react";
+import { User } from "next-auth";
 import Image from "next/image";
-import styles from "./page.module.scss";
 import { useRouter } from "next/navigation";
+
+import { formatDate } from "@/utils/formatDate";
+import styles from "./page.module.scss";
 
 export default function Home() {
   const [users, setUsers] = useState<User[]>([]);
@@ -37,7 +38,9 @@ export default function Home() {
   }, [isLoading, setIsLoading, setError]);
 
   const goToProfile = (id: string) => {
-    router.push(`/profiles/${id}`);
+    if (id) {
+      router.push(`/profiles/${id}`);
+    }
   };
 
   return (

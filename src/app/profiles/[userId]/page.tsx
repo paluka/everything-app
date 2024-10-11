@@ -6,8 +6,8 @@ import { useSession, signOut } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import CreatePost from "../../components/createPost/createPost";
-import ProfileFeed from "../../components/profileFeed/profileFeed";
+import CreatePost from "../../components/createPost/";
+import ProfileFeed from "../../components/profileFeed/";
 
 interface UserProfile {
   id: string;
@@ -22,7 +22,13 @@ const ProfilePage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
-  const { data: session, status } = useSession();
+  const { data: session, status } = useSession({
+    required: true, // This will make sure the session is required and fetched before rendering
+    onUnauthenticated() {
+      router.push("/login");
+    },
+  });
+
   const router = useRouter();
   const { userId } = useParams();
   let userIdString = "";
@@ -35,7 +41,7 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (status === "loading") return; // Do nothing while loading
-    if (!session) router.push("/login"); // Redirect to login if not authenticated
+    // if (!session) router.push("/login"); // Redirect to login if not authenticated
 
     if (userIdString && !isLoading) {
       setIsLoading(true);
@@ -71,9 +77,9 @@ const ProfilePage = () => {
     setProfile,
   ]);
 
-  if (status === "loading") {
-    return <p>Loading...</p>; // Show a loading message while session is being checked
-  }
+  // if (status === "loading") {
+  //   return <p>Loading...</p>; // Show a loading message while session is being checked
+  // }
 
   // console.log("session", session);
   // console.log("userIdString", userIdString);
@@ -85,7 +91,7 @@ const ProfilePage = () => {
 
   return (
     <>
-      {session ? (
+      {status === "authenticated" && (
         <>
           {error && <p>{error}</p>}
 
@@ -103,8 +109,6 @@ const ProfilePage = () => {
 
           <ProfileFeed userId={userIdString} />
         </>
-      ) : (
-        <p>Redirecting...</p>
       )}
     </>
   );

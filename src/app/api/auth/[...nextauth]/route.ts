@@ -27,10 +27,15 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   debug: true,
+  secret: process.env.NEXTAUTH_SECRET,
   // Optional: Add a database or other configuration here
   // database: process.env.DATABASE_URL,
   session: {
     strategy: "jwt", // Use JWT for session management
+  },
+  jwt: {
+    secret: process.env.NEXTAUTH_SECRET,
+    // encryption: true,
   },
   // pages: {
   //   signIn: "/profile",

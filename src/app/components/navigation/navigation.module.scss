@@ -1,29 +1,30 @@
-.footer {
-  grid-row-start: 3;
+.navigation {
+  grid-row-start: 2;
   display: flex;
   gap: 24px;
+  min-width: 200px;
 }
 
-.footer a {
+.navigation a {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.footer img {
+.navigation img {
   flex-shrink: 0;
 }
 
 /* Enable hover only on non-touch devices */
 @media (hover: hover) and (pointer: fine) {
-  .footer a:hover {
+  .navigation a:hover {
     text-decoration: underline;
     text-underline-offset: 4px;
   }
 }
 
 @media (max-width: 600px) {
-  .footer {
+  .navigation {
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;

@@ -1,0 +1,18 @@
+.providersContainer {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+
+  .provider {
+    margin-top: 50px;
+
+    button {
+      min-width: 200px;
+      min-height: 50px;
+      background-color: #6495ed;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+    }
+  }
+}

@@ -6,6 +6,8 @@ import { getProviders, signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import loginStyles from "./login.module.scss";
+
 const LoginPage = () => {
   const { data: session, status } = useSession();
   const [providers, setProviders] = useState<Record<string, any>>({});
@@ -21,24 +23,24 @@ const LoginPage = () => {
     }
 
     fetchProviders();
-  }, []);
+  }, [setProviders]);
 
   useEffect(() => {
-    if (status === "loading") return;
-    // if (session) router.push("/profile");
-  }, [session, status, router]);
-
-  if (status === "loading") {
-    return <p>Loading...</p>; // Show a loading message while session is being checked
-  }
+    if (status === "loading") {
+      return;
+    }
+    if (status === "authenticated") {
+      router.push(`/profiles/${session.user.id}`);
+    }
+  }, [status, router, session]);
 
   return (
-    <div>
-      <h1>Login</h1>
+    <div className={loginStyles.providersContainer}>
+      <h2>Authentication Providers</h2>
 
       {providers &&
         Object.values(providers).map((provider) => (
-          <div key={provider.name}>
+          <div key={provider.name} className={loginStyles.provider}>
             <button onClick={() => signIn(provider.id, { redirect: true })}>
               Sign in with {provider.name}
             </button>
