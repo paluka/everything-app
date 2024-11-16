@@ -7,7 +7,7 @@ import { getServerSession } from "next-auth";
 import localFont from "next/font/local";
 
 import "./globals.scss";
-import pageStyles from "./page.module.scss";
+import layoutStyles from "./layout.module.scss";
 import Navigation from "./components/navigation/";
 import SessionProviderWrapper from "./components/sessionProviderWrapper";
 import { authOptions } from "./api/auth/[...nextauth]/route";
@@ -42,11 +42,11 @@ export default async function RootLayout({
       </head>
 
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <div className={pageStyles.page}>
-          <h1 className={pageStyles.header}>Everything App</h1>
+        <div className={layoutStyles.page}>
+          <h1 className={layoutStyles.header}>Everything App</h1>
           <Navigation session={session} />
           <SessionProviderWrapper session={session}>
-            <main className={pageStyles.main}>{children}</main>
+            <main className={layoutStyles.main}>{children}</main>
           </SessionProviderWrapper>
         </div>
       </body>

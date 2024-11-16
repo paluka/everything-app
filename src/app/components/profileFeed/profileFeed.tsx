@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react";
+import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 import profileFeedStyles from "./profileFeed.module.scss";
-import { formatDate } from "@/utils/formatDate";
+import Post, { IPost } from "../post";
+import { UserProfile } from "@/app/profiles/[userId]/page";
 
-interface Post {
-  id: string;
-  content: string;
-  createdAt: string;
-}
-
-const ProfileFeed = ({ userId }: { userId: string }) => {
-  const [posts, setPosts] = useState<Post[]>([]);
+const ProfileFeed = ({ user }: { user: UserProfile }) => {
+  const [posts, setPosts] = useState<IPost[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
 
@@ -24,7 +21,7 @@ const ProfileFeed = ({ userId }: { userId: string }) => {
 
     const fetchPosts = async () => {
       await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/posts?userId=${userId}`
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/posts?userId=${user.id}`
       )
         // await fetch(`/api/post?userId=${userId}`)
         .then((res) => res.json())
@@ -33,26 +30,37 @@ const ProfileFeed = ({ userId }: { userId: string }) => {
           setError(true);
           console.error("Post fetching error", error);
         });
+      // .finally(() => {
+      //   setIsLoading(false);
+      // });
     };
 
     fetchPosts();
 
     setIsLoading(false);
-  }, [setPosts, setError, setIsLoading, isLoading, userId]);
+  }, [setPosts, setError, setIsLoading, isLoading, user]);
 
   return (
     <div className={profileFeedStyles.profileFeed}>
-      <h1>Profile Feed</h1>
+      <SkeletonTheme
+        baseColor="var(--gray-alpha-100);"
+        height={68}
+        borderRadius={4}
+      >
+        <h1 className={profileFeedStyles.title}>Profile Feed</h1>
 
-      {isLoading && <p>Loading...</p>}
-      {error && <p>Error fetching posts</p>}
+        {(isLoading || !posts.length) && (
+          <Skeleton count={5} style={{ marginBottom: "20px" }} />
+        )}
 
-      {posts.map((post) => (
-        <div key={post.id} className={profileFeedStyles.post}>
-          <p>{post.content}</p>
-          <p>Created at: {formatDate(post.createdAt)}</p>
-        </div>
-      ))}
+        {error && <p>Error fetching posts</p>}
+
+        {!isLoading &&
+          !error &&
+          posts.map((post, index) => (
+            <Post key={index} user={user} post={post} />
+          ))}
+      </SkeletonTheme>
     </div>
   );
 };

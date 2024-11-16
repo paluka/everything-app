@@ -3,33 +3,40 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import CreatePost from "../../components/createPost/";
 import ProfileFeed from "../../components/profileFeed/";
 
-interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: string;
-  image: string;
+export interface UserProfile {
+  // id: string;
+  // name: string;
+  // email: string;
+  // createdAt: string;
+  // image: string;
+
+  id?: string | undefined;
+  name?: string | undefined;
+  email?: string | undefined;
+  image?: string | undefined;
 }
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: session, status } = useSession({
-    required: true, // This will make sure the session is required and fetched before rendering
-    onUnauthenticated() {
-      router.push("/login");
-    },
+    required: false,
+    // required: true, // This will make sure the session is required and fetched before rendering
+    // onUnauthenticated() {
+    //   router.push("/login");
+    // },
   });
 
-  const router = useRouter();
+  // const router = useRouter();
   const { userId } = useParams();
   let userIdString = "";
 
@@ -40,7 +47,7 @@ const ProfilePage = () => {
   }
 
   useEffect(() => {
-    if (status === "loading") return; // Do nothing while loading
+    // if (status === "loading") return; // Do nothing while loading
     // if (!session) router.push("/login"); // Redirect to login if not authenticated
 
     if (userIdString && !isLoading) {
@@ -66,38 +73,32 @@ const ProfilePage = () => {
       fetchProfile();
       setIsLoading(false);
     }
-  }, [
-    session,
-    status,
-    router,
-    userIdString,
-    isLoading,
-    setIsLoading,
-    setError,
-    setProfile,
-  ]);
+  }, [isLoading, setIsLoading, setError, setProfile, userIdString]);
 
-  // if (status === "loading") {
-  //   return <p>Loading...</p>; // Show a loading message while session is being checked
-  // }
-
-  // console.log("session", session);
-  // console.log("userIdString", userIdString);
   const userIsProfileOwner = session?.user?.id ?? "" == userIdString;
 
   const imageUrl =
     (userIsProfileOwner ? session?.user?.image : profile?.image) ??
     "https://picsum.photos/100/100";
 
+  const userObj = userIsProfileOwner ? session?.user : profile;
+
   return (
     <>
-      {status === "authenticated" && (
+      {/* {status === "authenticated" && ( */}
+      {!isLoading && (
         <>
           {error && <p>{error}</p>}
 
-          <Image src={imageUrl} alt="Profile Image" width={100} height={100} />
+          <Image
+            className={".profileImage"}
+            src={imageUrl}
+            alt="Profile Image"
+            width={100}
+            height={100}
+          />
 
-          <h1>{userIsProfileOwner ? session.user?.name : profile?.name}</h1>
+          <h1>{userIsProfileOwner ? session?.user?.name : profile?.name}</h1>
 
           {userIsProfileOwner && (
             <button onClick={() => signOut({ callbackUrl: "/" })}>
@@ -107,7 +108,7 @@ const ProfilePage = () => {
 
           {userIsProfileOwner && <CreatePost userId={userIdString} />}
 
-          <ProfileFeed userId={userIdString} />
+          {userObj && <ProfileFeed user={userObj} />}
         </>
       )}
     </>

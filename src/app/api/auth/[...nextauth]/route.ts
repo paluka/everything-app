@@ -46,29 +46,31 @@ export const authOptions: NextAuthOptions = {
   // },
   callbacks: {
     async redirect({ url, baseUrl }) {
-      console.log("redirect callback", url, baseUrl);
+      // console.log("redirect callback", url, baseUrl);
       // If the URL is the sign-in page, redirect to the user's profile
       if (url === "/login") {
-        console.log("redirect callback", url, baseUrl);
+        // console.log("redirect callback", url, baseUrl);
         const session = await getSession();
         if (session?.user?.id) {
-          console.log("redirect callback", session.user.id);
+          // console.log("redirect callback", session.user.id);
           // Redirect to the user's profile page
           return `${baseUrl}/profiles/${session.user.id}`;
         }
       }
       return baseUrl;
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async session({ session, token, user }) {
-      console.log("Session callback:", { session, token, user });
+      // console.log("Session callback:", { session, token, user });
 
       if (token?.sub) {
         session.user.id = token.sub;
       }
       return session;
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async jwt({ token, user, account, profile }) {
-      console.log("JWT callback:", { token, user, account, profile });
+      // console.log("JWT callback:", { token, user, account, profile });
 
       if (user?.id) {
         token.id = user.id;
