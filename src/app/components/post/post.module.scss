@@ -22,14 +22,16 @@
     gap: 8px;
 
     .userName {
+      font-weight: 600;
     }
 
     .postContent {
+      font-weight: 300;
     }
   }
 
   .postDate {
-    font-size: 12px;
+    font-size: 0.8rem;
   }
 }
 
@@ -40,8 +42,4 @@
   to {
     opacity: 1; /* End fully visible */
   }
-}
-
-.profileImage {
-  border-radius: 10px;
 }

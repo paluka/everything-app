@@ -1,4 +1,4 @@
-// src/app/profile/page.tsx
+// src/app/profiles/[userId]/page.tsx
 
 "use client";
 
@@ -6,8 +6,13 @@ import { useSession, signOut } from "next-auth/react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+
 import CreatePost from "../../components/createPost/";
 import ProfileFeed from "../../components/profileFeed/";
+
+import profilesStyles from "./profiles.module.scss";
 
 export interface UserProfile {
   // id: string;
@@ -77,9 +82,12 @@ const ProfilePage = () => {
 
   const userIsProfileOwner = session?.user?.id ?? "" == userIdString;
 
+  // const imageUrl =
+  //   (userIsProfileOwner ? session?.user?.image : profile?.image) ??
+  //   "https://picsum.photos/100/100";
+
   const imageUrl =
-    (userIsProfileOwner ? session?.user?.image : profile?.image) ??
-    "https://picsum.photos/100/100";
+    (userIsProfileOwner ? session?.user?.image : profile?.image) ?? "";
 
   const userObj = userIsProfileOwner ? session?.user : profile;
 
@@ -87,18 +95,29 @@ const ProfilePage = () => {
     <>
       {/* {status === "authenticated" && ( */}
       {!isLoading && (
-        <>
+        <SkeletonTheme
+          baseColor="var(--gray-alpha-100);"
+          // height={68}
+          borderRadius={4}
+        >
           {error && <p>{error}</p>}
 
-          <Image
-            className={".profileImage"}
-            src={imageUrl}
-            alt="Profile Image"
-            width={100}
-            height={100}
-          />
+          {(imageUrl && (
+            <Image
+              className={"profileImage"}
+              src={imageUrl}
+              alt="Profile Image"
+              width={100}
+              height={100}
+            />
+          )) || <Skeleton width={100} height={100} />}
 
-          <h1>{userIsProfileOwner ? session?.user?.name : profile?.name}</h1>
+          {(userObj && (
+            <div>
+              <div className={profilesStyles.userName}>{userObj?.name}</div>
+              <div className={profilesStyles.userId}>{`@${userObj?.id}`}</div>
+            </div>
+          )) || <Skeleton height={40} />}
 
           {userIsProfileOwner && (
             <button onClick={() => signOut({ callbackUrl: "/" })}>
@@ -108,8 +127,10 @@ const ProfilePage = () => {
 
           {userIsProfileOwner && <CreatePost userId={userIdString} />}
 
-          {userObj && <ProfileFeed user={userObj} />}
-        </>
+          {(userObj && <ProfileFeed user={userObj} />) || (
+            <Skeleton count={5} height={68} style={{ marginBottom: "20px" }} />
+          )}
+        </SkeletonTheme>
       )}
     </>
   );

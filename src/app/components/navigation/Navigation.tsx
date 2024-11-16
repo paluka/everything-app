@@ -25,6 +25,7 @@ function Navigation({ session }: { session: Session | null }) {
         <>
           <a href="/api/auth/signout">Sign out</a>
           <a href={`/profiles/${userId}`}>Profile</a>
+          <a href={`/messages`}>Messages</a>
         </>
       ) : (
         <a href="/login">Sign in</a>

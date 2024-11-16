@@ -30,9 +30,6 @@ const ProfileFeed = ({ user }: { user: UserProfile }) => {
           setError(true);
           console.error("Post fetching error", error);
         });
-      // .finally(() => {
-      //   setIsLoading(false);
-      // });
     };
 
     fetchPosts();

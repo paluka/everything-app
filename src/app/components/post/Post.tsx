@@ -29,7 +29,7 @@ function Post({ user, post }: { user: UserProfile; post: IPost }) {
     >
       <div className={postStyles.singlePostContainer}>
         <Image
-          className={postStyles.profileImage}
+          className={"profileImage"}
           src={user?.image ?? ""}
           width={40}
           height={40}
