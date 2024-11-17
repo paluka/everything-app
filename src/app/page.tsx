@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User } from "next-auth";
+// import { User } from "next-auth";
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
 import Post from "./components/post";
+import { IUserProfile } from "@/types/entities";
 
 export default function Home() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<IUserProfile[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
   // const router = useRouter();
@@ -36,6 +37,8 @@ export default function Home() {
     setIsLoading(false);
   }, [isLoading, setIsLoading, setError]);
 
+  console.log("Users data:", users);
+
   return (
     <div>
       <SkeletonTheme
@@ -44,14 +47,14 @@ export default function Home() {
         borderRadius={4}
       >
         {(isLoading || !users.length) && (
-          <Skeleton count={5} style={{ marginBottom: "20px" }} />
+          <Skeleton count={15} style={{ marginBottom: "20px" }} />
         )}
 
         {error && <p>Error fetching users</p>}
 
         {!isLoading &&
           !error &&
-          users.map((user) => (
+          users.map((user: IUserProfile) => (
             <div key={user.id}>
               {user.posts?.map((post, index) => (
                 <Post key={index} user={user} post={post} />

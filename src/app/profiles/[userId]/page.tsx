@@ -13,22 +13,10 @@ import CreatePost from "../../components/createPost/";
 import ProfileFeed from "../../components/profileFeed/";
 
 import profilesStyles from "./profiles.module.scss";
-
-export interface UserProfile {
-  // id: string;
-  // name: string;
-  // email: string;
-  // createdAt: string;
-  // image: string;
-
-  id?: string | undefined;
-  name?: string | undefined;
-  email?: string | undefined;
-  image?: string | undefined;
-}
+import { IUserProfile } from "@/types/entities";
 
 const ProfilePage = () => {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<IUserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
@@ -51,6 +39,8 @@ const ProfilePage = () => {
     userIdString = userId;
   }
 
+  console.log("User ID string:", userIdString);
+
   useEffect(() => {
     // if (status === "loading") return; // Do nothing while loading
     // if (!session) router.push("/login"); // Redirect to login if not authenticated
@@ -59,37 +49,41 @@ const ProfilePage = () => {
       setIsLoading(true);
       setError("");
 
-      const fetchProfile = async () => {
+      const fetchUserProfile = async () => {
         try {
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_BACKEND_URL}/users/${userIdString}`
           );
           // const response = await fetch(`/api/profiles/${userIdString}`);
           if (!response.ok) {
-            throw new Error("Profile not found");
+            throw new Error("User profile not found");
           }
           const data = await response.json();
-          setProfile(data);
+          setUserProfile(data);
         } catch (error) {
           setError("Failed to fetch profile");
         }
       };
 
-      fetchProfile();
+      fetchUserProfile();
       setIsLoading(false);
     }
-  }, [isLoading, setIsLoading, setError, setProfile, userIdString]);
+  }, [isLoading, setIsLoading, setError, setUserProfile, userIdString]);
 
-  const userIsProfileOwner = session?.user?.id ?? "" == userIdString;
+  console.log("User data:", userProfile);
+
+  const userIsProfileOwner = session?.user?.id == userIdString;
 
   // const imageUrl =
   //   (userIsProfileOwner ? session?.user?.image : profile?.image) ??
   //   "https://picsum.photos/100/100";
 
-  const imageUrl =
-    (userIsProfileOwner ? session?.user?.image : profile?.image) ?? "";
+  // const imageUrl =
+  //   (userIsProfileOwner ? session?.user?.image : userProfile?.image) ?? "";
 
-  const userObj = userIsProfileOwner ? session?.user : profile;
+  // const userObj = userIsProfileOwner ? session?.user : userProfile;
+
+  console.log("User Object passed to the Profile Feed:", userProfile);
 
   return (
     <>
@@ -102,20 +96,22 @@ const ProfilePage = () => {
         >
           {error && <p>{error}</p>}
 
-          {(imageUrl && (
+          {(userProfile?.image && (
             <Image
               className={"profileImage"}
-              src={imageUrl}
+              src={userProfile.image}
               alt="Profile Image"
               width={100}
               height={100}
             />
           )) || <Skeleton width={100} height={100} />}
 
-          {(userObj && (
+          {(userProfile && (
             <div>
-              <div className={profilesStyles.userName}>{userObj?.name}</div>
-              <div className={profilesStyles.userId}>{`@${userObj?.id}`}</div>
+              <div className={profilesStyles.userName}>{userProfile.name}</div>
+              <div
+                className={profilesStyles.userId}
+              >{`@${userProfile.id}`}</div>
             </div>
           )) || <Skeleton height={40} />}
 
@@ -127,7 +123,7 @@ const ProfilePage = () => {
 
           {userIsProfileOwner && <CreatePost userId={userIdString} />}
 
-          {(userObj && <ProfileFeed user={userObj} />) || (
+          {(userProfile && <ProfileFeed user={userProfile} />) || (
             <Skeleton count={5} height={68} style={{ marginBottom: "20px" }} />
           )}
         </SkeletonTheme>

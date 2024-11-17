@@ -33,11 +33,11 @@ declare module "next-auth" {
   //     id?: string; // Custom property
   //   }
 
-  interface User {
-    id?: string;
-    name?: string;
-    email?: string;
-    image?: string;
-    posts?: Post[];
-  }
+  // interface User {
+  //   id?: string;
+  //   name?: string;
+  //   email?: string;
+  //   image?: string;
+  //   posts?: Post[];
+  // }
 }

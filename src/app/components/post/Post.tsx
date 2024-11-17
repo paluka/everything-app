@@ -4,15 +4,9 @@ import { useRouter } from "next/navigation";
 import { formatDate } from "@/utils/formatDate";
 
 import postStyles from "./post.module.scss";
-import { UserProfile } from "@/app/profiles/[userId]/page";
+import { IPost, IUserProfile } from "@/types/entities";
 
-export interface IPost {
-  id: string;
-  content: string;
-  createdAt: string;
-}
-
-function Post({ user, post }: { user: UserProfile; post: IPost }) {
+function Post({ user, post }: { user: IUserProfile; post: IPost }) {
   const router = useRouter();
 
   const goToProfile = (id: string) => {
