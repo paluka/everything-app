@@ -9,7 +9,7 @@ import { IUserProfile } from "@/types/entities";
 
 // import { UserProfile } from "@/app/profiles/[userId]/page";
 
-const ProfileFeed = ({ user }: { user: IUserProfile }) => {
+const ProfileFeed = ({ userProfile }: { userProfile: IUserProfile }) => {
   // const [posts, setPosts] = useState<IPost[]>([]);
   // const [isLoading, setIsLoading] = useState<boolean>(false);
   // const [error, setError] = useState<boolean>(false);
@@ -24,7 +24,7 @@ const ProfileFeed = ({ user }: { user: IUserProfile }) => {
 
   //   const fetchPosts = async () => {
   //     await fetch(
-  //       `${process.env.NEXT_PUBLIC_BACKEND_URL}/posts?userId=${user.id}`
+  //       `${process.env.NEXT_PUBLIC_BACKEND_URL}/posts?id=${user.id}`
   //     )
   //       // await fetch(`/api/post?userId=${userId}`)
   //       .then((res) => res.json())
@@ -60,8 +60,8 @@ const ProfileFeed = ({ user }: { user: IUserProfile }) => {
           posts.map((post, index) => (
             <Post key={index} user={user} post={post} />
           ))} */}
-      {user.posts?.map((post, index) => (
-        <Post key={index} user={user} post={post} />
+      {userProfile.posts?.map((post, index) => (
+        <Post key={index} userProfile={userProfile} post={post} />
       ))}
       {/* </SkeletonTheme> */}
     </div>

@@ -6,6 +6,8 @@ import { useSession, signOut } from "next-auth/react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
@@ -19,6 +21,7 @@ const ProfilePage = () => {
   const [userProfile, setUserProfile] = useState<IUserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const router = useRouter();
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: session, status } = useSession({
@@ -83,7 +86,13 @@ const ProfilePage = () => {
 
   // const userObj = userIsProfileOwner ? session?.user : userProfile;
 
-  console.log("User Object passed to the Profile Feed:", userProfile);
+  // console.log("User Object passed to the Profile Feed:", userProfile);
+
+  const messageUser = (id: string | undefined) => {
+    if (id) {
+      router.push(`/messages?userId=${id}`);
+    }
+  };
 
   return (
     <>
@@ -115,15 +124,19 @@ const ProfilePage = () => {
             </div>
           )) || <Skeleton height={40} />}
 
-          {userIsProfileOwner && (
+          {(userIsProfileOwner && (
             <button onClick={() => signOut({ callbackUrl: "/" })}>
               Sign out
+            </button>
+          )) || (
+            <button onClick={() => messageUser(userProfile?.id)}>
+              Message
             </button>
           )}
 
           {userIsProfileOwner && <CreatePost userId={userIdString} />}
 
-          {(userProfile && <ProfileFeed user={userProfile} />) || (
+          {(userProfile && <ProfileFeed userProfile={userProfile} />) || (
             <Skeleton count={5} height={68} style={{ marginBottom: "20px" }} />
           )}
         </SkeletonTheme>

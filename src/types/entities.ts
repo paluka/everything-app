@@ -2,6 +2,8 @@ export interface IPost {
   id: string;
   content: string;
   createdAt: string;
+  user: IUserProfile;
+  userId: string;
 }
 
 export interface IUserProfile {

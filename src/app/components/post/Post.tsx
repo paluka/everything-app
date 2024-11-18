@@ -6,10 +6,16 @@ import { formatDate } from "@/utils/formatDate";
 import postStyles from "./post.module.scss";
 import { IPost, IUserProfile } from "@/types/entities";
 
-function Post({ user, post }: { user: IUserProfile; post: IPost }) {
+function Post({
+  userProfile,
+  post,
+}: {
+  userProfile: IUserProfile;
+  post: IPost;
+}) {
   const router = useRouter();
 
-  const goToProfile = (id: string) => {
+  const goToProfile = (id: string | undefined) => {
     if (id) {
       router.push(`/profiles/${id}`);
     }
@@ -19,18 +25,18 @@ function Post({ user, post }: { user: IUserProfile; post: IPost }) {
     <div
       key={post.id}
       className={postStyles.postsContainer}
-      onClick={() => goToProfile(user.id ?? "")}
+      onClick={() => goToProfile(userProfile.id)}
     >
       <div className={postStyles.singlePostContainer}>
         <Image
           className={"profileImage"}
-          src={user?.image ?? ""}
+          src={userProfile.image}
           width={40}
           height={40}
-          alt={user?.name ?? ""}
+          alt={userProfile.name}
         />
         <div>
-          <div className={postStyles.userName}>{user.name}</div>
+          <div className={postStyles.userName}>{userProfile.name}</div>
           <div className={postStyles.postContent}>{post.content}</div>
         </div>
       </div>
