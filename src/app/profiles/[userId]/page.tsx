@@ -4,7 +4,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -44,34 +44,42 @@ const ProfilePage = () => {
 
   console.log("User ID string:", userIdString);
 
-  useEffect(() => {
-    // if (status === "loading") return; // Do nothing while loading
-    // if (!session) router.push("/login"); // Redirect to login if not authenticated
+  const memoizedFetchUserProfile = useCallback(
+    async function fetchUserProfile() {
+      // if (status === "loading") return; // Do nothing while loading
+      // if (!session) router.push("/login"); // Redirect to login if not authenticated
 
-    if (userIdString && !isLoading) {
+      if (isLoading || !userIdString || userProfile) {
+        return;
+      }
+
       setIsLoading(true);
       setError("");
 
-      const fetchUserProfile = async () => {
-        try {
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/users/${userIdString}`
-          );
-          // const response = await fetch(`/api/profiles/${userIdString}`);
-          if (!response.ok) {
-            throw new Error("User profile not found");
-          }
-          const data = await response.json();
-          setUserProfile(data);
-        } catch (error) {
-          setError("Failed to fetch profile");
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/users/${userIdString}`
+        );
+        // const response = await fetch(`/api/profiles/${userIdString}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch user profile");
         }
-      };
+        const data = await response.json();
+        setUserProfile(data);
+      } catch (error) {
+        const errorString = `Failed to fetch profile: ${error}`;
+        setError(errorString);
+        console.error(errorString);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading, userIdString, userProfile]
+  );
 
-      fetchUserProfile();
-      setIsLoading(false);
-    }
-  }, [isLoading, setIsLoading, setError, setUserProfile, userIdString]);
+  useEffect(() => {
+    memoizedFetchUserProfile();
+  }, [memoizedFetchUserProfile]);
 
   console.log("User data:", userProfile);
 

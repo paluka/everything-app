@@ -4,7 +4,7 @@ import createPostStyles from "./createPost.module.scss";
 
 function CreatePost({ userId }: { userId: string }) {
   const [content, setContent] = useState<string>("");
-  const [error, setError] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleSubmit = async () => {
@@ -12,28 +12,36 @@ function CreatePost({ userId }: { userId: string }) {
       return;
     }
 
-    setError(false);
-    setIsLoading(true);
+    try {
+      setError("");
+      setIsLoading(true);
 
-    // const response = await fetch("/api/post", {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/posts`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content, userId }),
+      // const response = await fetch("/api/post", {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/posts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ content, userId }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to create the post");
       }
-    )
-      .then((res) => res.json())
-      .catch((error) => {
-        setError(error.message);
-        console.error("Post saving error", error);
-      });
 
-    console.log(response);
-    setIsLoading(false);
+      const data = await response.json();
+      console.log(`Create post response: ${JSON.stringify(data)}`);
+    } catch (error) {
+      const errorString = `Post saving error: ${error}`;
+      setError(errorString);
+      console.error(errorString);
+    } finally {
+      setContent("");
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,7 +51,7 @@ function CreatePost({ userId }: { userId: string }) {
       <button onClick={handleSubmit}>Post</button>
 
       {isLoading && <span>Loading...</span>}
-      {error && <span>There was an error saving your post</span>}
+      {error && <span>{error}</span>}
     </div>
   );
 }

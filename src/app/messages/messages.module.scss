@@ -1,0 +1,14 @@
+.container {
+  display: flex;
+  flex-direction: row;
+
+  .conversationList {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .conversation {
+    display: flex;
+    flex-direction: column;
+  }
+}

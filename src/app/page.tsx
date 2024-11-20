@@ -18,7 +18,7 @@ export default function Home() {
     paginated: false,
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
 
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true); // To check if there are more posts to fetch
@@ -31,7 +31,7 @@ export default function Home() {
         return;
       }
 
-      setError(false);
+      setError("");
       setIsLoading(true);
 
       try {
@@ -41,6 +41,11 @@ export default function Home() {
           }/posts?paginated=true&limit=20${cursor ? `&cursor=${cursor}` : ""}`
         );
         // await fetch(`/api/post?userId=${userId}`)
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch posts");
+        }
+
         const data = await response.json();
 
         setPostsData((prevData) => {
@@ -60,7 +65,7 @@ export default function Home() {
         setCursor(data.nextCursor); // Update the cursor
         setHasMore(data.hasMore); // Check if there are more posts
       } catch (error) {
-        setError(true);
+        setError(`Post fetching error: ${error}`);
         console.error("Post fetching error", error);
       } finally {
         setIsLoading(false);
@@ -101,7 +106,7 @@ export default function Home() {
           <Skeleton count={15} style={{ marginBottom: "20px" }} />
         )}
 
-        {error && <p>Error fetching users</p>}
+        {error && <p>{error}</p>}
 
         {/* {!isLoading &&
           !error &&
