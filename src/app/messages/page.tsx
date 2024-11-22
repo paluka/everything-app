@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import messagesStyles from "./messages.module.scss";
-import { IConversation, IConversationParticipants } from "@/types/entities";
+import { IConversation, IConversationParticipant } from "@/types/entities";
 
 function Messages() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [hasFetched, setHasFetched] = useState<boolean>(false);
   const [conversations, setConversations] = useState<any[]>([]);
   const [error, setError] = useState<string>("");
   const router = useRouter();
@@ -35,37 +36,6 @@ function Messages() {
 
   console.log("User ID string:", userIdString);
   console.log("Message receiver user ID string:", messageReceiverUserId);
-
-  const memoizedFetchConversations = useCallback(
-    async function fetchConversations() {
-      if (isLoading || !userIdString || conversations) {
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setError("");
-
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations/user/${userIdString}`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch conversations");
-        }
-
-        const data = await response.json();
-        setConversations(data);
-      } catch (error) {
-        const errorString = `Error fetching conversations for user ${userIdString}. Error: ${error}`;
-        console.error(errorString);
-        setError(errorString);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [conversations, isLoading, userIdString]
-  );
 
   // const memoizedCheckConversationBetweenUsers = useCallback(
   //   async function checkConversationBetweenUsers() {
@@ -95,8 +65,46 @@ function Messages() {
   // );
 
   useEffect(() => {
-    memoizedFetchConversations();
-  }, [memoizedFetchConversations]);
+    async function fetchConversations() {
+      console.log("Fetch conversations", {
+        isLoading,
+        userIdString,
+        hasFetched,
+      });
+      if (isLoading || !userIdString || hasFetched) {
+        return;
+      }
+
+      console.log("Fetching conversations");
+      try {
+        setIsLoading(true);
+        setError("");
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations/user/${userIdString}`
+        );
+
+        console.log("Fetching conversations:", { response });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch conversations");
+        }
+
+        const data = await response.json();
+        console.log("Received conversations", { data });
+        setConversations(data);
+      } catch (error) {
+        const errorString = `Error fetching conversations for user ${userIdString}. Error: ${error}`;
+        console.error(errorString);
+        setError(errorString);
+      } finally {
+        setIsLoading(false);
+        setHasFetched(true);
+      }
+    }
+
+    fetchConversations();
+  }, [hasFetched, isLoading, userIdString]);
 
   // useEffect(() => {
   //   memoizedCheckConversationBetweenUsers();
@@ -109,15 +117,29 @@ function Messages() {
     conversations.filter((conversationData: IConversation) =>
       //conversationData.participants.includes(messageReceiverUserId)
       conversationData.participants.some(
-        (participant: IConversationParticipants) =>
+        (participant: IConversationParticipant) =>
           participant.id === messageReceiverUserId
       )
     );
 
-  const handleCreateConversation = async () => {
+  async function handleCreateConversation() {
     if (isLoading) {
       return;
     }
+
+    const conversationData = {
+      // name: "Conversation between User A and User B",
+      participants: [
+        { userId: userIdString }, // User A
+        { userId: messageReceiverUserId }, // User B
+      ],
+      messages: [
+        {
+          content: "Hello, how are you?",
+          senderId: userIdString, // User A is sending the first message
+        },
+      ],
+    };
 
     try {
       setError("");
@@ -130,7 +152,7 @@ function Messages() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({}),
+          body: JSON.stringify(conversationData),
         }
       );
 
@@ -147,7 +169,7 @@ function Messages() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   console.log({
     isLoading,
@@ -185,7 +207,9 @@ function Messages() {
         {!isLoading &&
           !error &&
           conversations.map((conversationData: IConversation) => (
-            <div key={conversationData.id}>{String(conversationData)}</div>
+            <div key={conversationData.id}>
+              {JSON.stringify(conversationData)}
+            </div>
           ))}
       </div>
 
