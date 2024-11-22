@@ -18,11 +18,11 @@ export interface IUserProfile {
   //   email: string | undefined;
   //   image: string | undefined;
   posts?: IPost[] | undefined;
-  conversations?: IConversationParticipants[] | undefined;
+  conversations?: IConversationParticipant[] | undefined;
   messages?: IConversationMessage[] | undefined;
 }
 
-export interface IConversationParticipants {
+export interface IConversationParticipant {
   id: string;
   conversationId: string;
   userId: string;
@@ -43,7 +43,7 @@ export interface IConversationMessage {
 
 export interface IConversation {
   id: string;
-  participants: IConversationParticipants[];
+  participants: IConversationParticipant[];
   messages: IConversationMessage[];
   createdAt: string;
 }
