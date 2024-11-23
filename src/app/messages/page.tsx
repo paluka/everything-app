@@ -3,14 +3,21 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 
 import messagesStyles from "./messages.module.scss";
-import { IConversation, IConversationParticipant } from "@/types/entities";
+import { IConversation, IConversationMessage } from "@/types/entities";
+import { formatDate } from "@/utils/formatDate";
+import { getSocket } from "../../utils/socket";
 
 function Messages() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasFetched, setHasFetched] = useState<boolean>(false);
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversationList, setConversationList] = useState<IConversation[]>([]);
+  const [openConversation, setOpenConversation] = useState<IConversation>();
+  const [lastOpenConversationId, setLastOpenConversationId] =
+    useState<string>("");
+  const [textContent, setTextContent] = useState<string>("");
   const [error, setError] = useState<string>("");
   const router = useRouter();
 
@@ -21,6 +28,8 @@ function Messages() {
       router.push("/login");
     },
   });
+
+  // console.log("Session user data", { sessionUser: session?.user });
 
   const userIdString = session?.user?.id;
 
@@ -34,8 +43,8 @@ function Messages() {
   //   messageReceiverUserId = userId;
   // }
 
-  console.log("User ID string:", userIdString);
-  console.log("Message receiver user ID string:", messageReceiverUserId);
+  // console.log("User ID string:", userIdString);
+  // console.log("Message receiver user ID string:", messageReceiverUserId);
 
   // const memoizedCheckConversationBetweenUsers = useCallback(
   //   async function checkConversationBetweenUsers() {
@@ -65,17 +74,93 @@ function Messages() {
   // );
 
   useEffect(() => {
+    if (!userIdString) {
+      return;
+    }
+    const socket = getSocket(userIdString);
+
+    socket.on("connect", () => {
+      console.log("WebSocket connected:", socket.id);
+    });
+
+    // socket.on("receiveMessage", (message) => {
+    //   console.log("New WebSocket message received:", message);
+    // });
+
+    socket.on("receiveMessage", (newMessage: IConversationMessage) => {
+      console.log("Received a new websocket message", { newMessage });
+      console.log(
+        newMessage.conversationId,
+        lastOpenConversationId,
+        newMessage.conversationId === lastOpenConversationId
+      );
+
+      if (newMessage.conversationId === lastOpenConversationId) {
+        setOpenConversation((prevConversation) => ({
+          ...prevConversation!,
+          messages: [...prevConversation!.messages, newMessage],
+        }));
+      } else {
+        // const conversation = conversationList.find(
+        //   (conversationItem: IConversation) =>
+        //     conversationItem.id === newMessage.conversationId
+        // );
+
+        setConversationList((prevList: IConversation[]) => {
+          const updatedList = prevList.map(
+            (conversationItem: IConversation) => {
+              if (conversationItem.id === newMessage.conversationId) {
+                return {
+                  ...conversationItem,
+                  messages: [...conversationItem.messages, newMessage],
+                };
+              }
+              return conversationItem;
+            }
+          );
+
+          return updatedList;
+        });
+      }
+      //     ...openConversation.messages!,
+      //     messageData as IConversationMessage,
+      //   ],
+      // });
+    });
+
+    socket.on("messageSent", (message) => {
+      console.log("New WebSocket message sent acknowledgement:", message);
+    });
+
+    socket.on("newMessageNotification", (message) => {
+      console.log(
+        "New WebSocket message in conversation notification received:",
+        { message }
+      );
+      // Optionally, update state or show a toast notification
+    });
+
+    return () => {
+      socket.off("receiveMessage"); // Clean up event listeners
+      socket.off("messageSent");
+      socket.off("newMessageNotification");
+      // Optionally, disconnect socket if no other components need it
+      // socket.disconnect();
+    };
+  }, [userIdString, lastOpenConversationId]);
+
+  useEffect(() => {
     async function fetchConversations() {
-      console.log("Fetch conversations", {
-        isLoading,
-        userIdString,
-        hasFetched,
-      });
+      // console.log("Fetch conversations", {
+      //   isLoading,
+      //   userIdString,
+      //   hasFetched,
+      // });
       if (isLoading || !userIdString || hasFetched) {
         return;
       }
 
-      console.log("Fetching conversations");
+      // console.log("Fetching conversations");
       try {
         setIsLoading(true);
         setError("");
@@ -84,15 +169,15 @@ function Messages() {
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations/user/${userIdString}`
         );
 
-        console.log("Fetching conversations:", { response });
+        // console.log("Fetching conversations:", { response });
 
         if (!response.ok) {
           throw new Error("Failed to fetch conversations");
         }
 
         const data = await response.json();
-        console.log("Received conversations", { data });
-        setConversations(data);
+        // console.log("Received conversations", { data });
+        setConversationList(data);
       } catch (error) {
         const errorString = `Error fetching conversations for user ${userIdString}. Error: ${error}`;
         console.error(errorString);
@@ -110,60 +195,183 @@ function Messages() {
   //   memoizedCheckConversationBetweenUsers();
   // }, [memoizedCheckConversationBetweenUsers]);
 
-  const conversationWithMessageReceiver =
-    !isLoading &&
-    !error &&
-    messageReceiverUserId &&
-    conversations.filter((conversationData: IConversation) =>
-      //conversationData.participants.includes(messageReceiverUserId)
-      conversationData.participants.some(
-        (participant: IConversationParticipant) =>
-          participant.id === messageReceiverUserId
-      )
-    );
+  // const conversationWithMessageReceiver = useMemo(
+  //   () =>
+  //     !isLoading &&
+  //     !error &&
+  //     messageReceiverUserId &&
+  //     conversationList.filter((conversationData: IConversation) =>
+  //       //conversationData.participants.includes(messageReceiverUserId)
+  //       conversationData.participants.some(
+  //         (participant: IConversationParticipant) =>
+  //           participant.id === messageReceiverUserId
+  //       )
+  //     ),
+  //   [conversationList, error, isLoading, messageReceiverUserId]
+  // );
 
-  async function handleCreateConversation() {
-    if (isLoading) {
+  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // async function handleCreateConversation() {
+  //   if (isLoading) {
+  //     return;
+  //   }
+
+  //   const conversationData = {
+  //     // name: "Conversation between User A and User B",
+  //     participants: [
+  //       { userId: userIdString }, // User A
+  //       { userId: messageReceiverUserId }, // User B
+  //     ],
+  //     messages: [
+  //       {
+  //         content: "Hello, how are you?",
+  //         senderId: userIdString, // User A is sending the first message
+  //       },
+  //     ],
+  //   };
+
+  //   try {
+  //     setError("");
+  //     setIsLoading(true);
+
+  //     const response = await fetch(
+  //       `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations`,
+  //       {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify(conversationData),
+  //       }
+  //     );
+
+  //     if (!response.ok) {
+  //       throw new Error("Failed to create the conversation");
+  //     }
+
+  //     const data = await response.json();
+  //     console.log(`Create conversation response: ${JSON.stringify(data)}`);
+  //   } catch (error) {
+  //     const errorString = `Create conversation error: ${error}`;
+  //     setError(errorString);
+  //     console.error(errorString);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // }
+
+  // console.log({
+  //   isLoading,
+  //   error,
+  //   conversationList,
+  //   conversationWithMessageReceiver,
+  //   condition: !isLoading && !error && !!messageReceiverUserId,
+  // });
+
+  function handleOpenConversation(conversation: IConversation) {
+    if (!userIdString || conversation.id === lastOpenConversationId) {
+      return;
+    }
+    setOpenConversation(conversation);
+    setLastOpenConversationId(conversation.id);
+
+    // const socket = getSocket(userIdString);
+
+    // console.log("joining room", conversation.id);
+    // socket.emit("joinRoom", conversation.id);
+
+    // Listen for new messages
+    // socket.on("receiveMessage", (newMessage) => {
+    //   console.log("Received a new websocket message", newMessage);
+
+    //   setOpenConversation((prevConversation) => ({
+    //     ...prevConversation!,
+    //     messages: [...prevConversation!.messages, newMessage],
+    //   }));
+    //   //     ...openConversation.messages!,
+    //   //     messageData as IConversationMessage,
+    //   //   ],
+    //   // });
+    // });
+
+    console.log("Open conversation", { conversation });
+  }
+
+  // function handleSendWebSocketMessage(content) {
+  //   socket.emit("sendMessage", {
+  //     conversationId,
+  //     senderId: userId,
+  //     message: content,
+  //   });
+  // }
+
+  async function handleSendMessage(conversation: IConversation) {
+    if (
+      !userIdString ||
+      isLoading ||
+      error ||
+      !textContent ||
+      !openConversation
+    ) {
       return;
     }
 
-    const conversationData = {
-      // name: "Conversation between User A and User B",
-      participants: [
-        { userId: userIdString }, // User A
-        { userId: messageReceiverUserId }, // User B
-      ],
-      messages: [
-        {
-          content: "Hello, how are you?",
-          senderId: userIdString, // User A is sending the first message
-        },
-      ],
-    };
+    const messageData: Partial<IConversationMessage> = {
+      content: textContent,
+      sender: {
+        ...session?.user,
+      },
+      conversation: {
+        id: conversation.id,
+      },
+    } as Partial<IConversationMessage>;
 
     try {
       setError("");
       setIsLoading(true);
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(conversationData),
-        }
-      );
+      // const response = await fetch(
+      //   `${process.env.NEXT_PUBLIC_BACKEND_URL}/messages`,
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //     },
+      //     body: JSON.stringify(messageData),
+      //   }
+      // );
 
-      if (!response.ok) {
-        throw new Error("Failed to create the conversation");
-      }
+      // if (!response.ok) {
+      //   throw new Error("Failed to send the message");
+      // }
+      const socket = getSocket(userIdString);
 
-      const data = await response.json();
-      console.log(`Create conversation response: ${JSON.stringify(data)}`);
+      const webSocketMessage = {
+        conversationId: conversation.id,
+        senderId: userIdString,
+        content: textContent,
+        sender: session?.user,
+        conversation: {
+          id: conversation.id,
+        },
+        createdAt: new Date().toString(),
+      } as IConversationMessage;
+
+      console.log("Sending message over WebSockets:", webSocketMessage);
+      socket.emit("sendMessage", webSocketMessage);
+
+      // const data = await response.json();
+      // console.log(`Send message response: ${JSON.stringify(data)}`);
+      setTextContent("");
+      setOpenConversation((prevOpenConversation) => ({
+        ...prevOpenConversation!,
+        messages: [
+          ...prevOpenConversation!.messages!,
+          webSocketMessage as IConversationMessage,
+        ],
+      }));
     } catch (error) {
-      const errorString = `Create conversation error: ${error}`;
+      const errorString = `Send message error: ${error}`;
       setError(errorString);
       console.error(errorString);
     } finally {
@@ -171,13 +379,9 @@ function Messages() {
     }
   }
 
-  console.log({
-    isLoading,
-    error,
-    conversations,
-    conversationWithMessageReceiver,
-    condition: !isLoading && !error && !!messageReceiverUserId,
-  });
+  // if (openConversation) {
+  //   console.log("Open Conversation", { openConversation });
+  // }
 
   return (
     <div className={messagesStyles.container}>
@@ -185,12 +389,18 @@ function Messages() {
       {error && <p>{error}</p>}
 
       <div className={messagesStyles.conversationList}>
-        {!isLoading && !error && !!messageReceiverUserId ? (
+        {/* {!isLoading && !error && !!messageReceiverUserId ? (
           conversationWithMessageReceiver &&
           conversationWithMessageReceiver.length ? (
             conversationWithMessageReceiver.map(
               (conversationData: IConversation) => (
-                <div key={conversationData.id}>{String(conversationData)}</div>
+                <div key={conversationData.id}>
+                  {conversationData.participants.map((participantItem) => (
+                    <div key={participantItem.id}>
+                      {participantItem.user.name}
+                    </div>
+                  ))}
+                </div>
               )
             )
           ) : (
@@ -202,18 +412,81 @@ function Messages() {
           )
         ) : (
           ""
-        )}
+        )} */}
 
         {!isLoading &&
           !error &&
-          conversations.map((conversationData: IConversation) => (
+          conversationList.map((conversationData: IConversation) => (
             <div key={conversationData.id}>
-              {JSON.stringify(conversationData)}
+              {conversationData.participants
+                .filter(
+                  (partcipantElement) =>
+                    partcipantElement.userId !== userIdString
+                )
+                .map((participantItem) => {
+                  if (
+                    messageReceiverUserId &&
+                    participantItem.userId === messageReceiverUserId &&
+                    !openConversation
+                  ) {
+                    setOpenConversation(conversationData);
+                  }
+
+                  return (
+                    <div
+                      className={messagesStyles.conversationItem}
+                      key={participantItem.id}
+                      onClick={() => handleOpenConversation(conversationData)}
+                    >
+                      {participantItem.user.name}
+                    </div>
+                  );
+                })}
             </div>
           ))}
       </div>
 
-      <div className={messagesStyles.conversation}></div>
+      <div className={messagesStyles.conversationMessagesContainer}>
+        {openConversation && (
+          <>
+            <div className={messagesStyles.conversationMessages}>
+              {openConversation?.messages!.map((message, index) => (
+                <div key={index} className={messagesStyles.messageContainer}>
+                  <div className={messagesStyles.messageContent}>
+                    {message.content}
+                  </div>
+                  <div className={messagesStyles.messageDetails}>
+                    <div>
+                      <Image
+                        className={"profileImage"}
+                        src={message.sender.image}
+                        alt="Profile Image"
+                        width={20}
+                        height={20}
+                      />
+                      {message.sender.name}
+                    </div>
+
+                    <div
+                      className={messagesStyles.messageDate}
+                    >{`Sent on ${formatDate(message.createdAt)}`}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className={messagesStyles.messageTextContainer}>
+              <textarea
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+              />
+              <button onClick={() => handleSendMessage(openConversation)}>
+                Send
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

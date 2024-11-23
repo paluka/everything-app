@@ -41,7 +41,7 @@ function Post({
         </div>
       </div>
       <div className={postStyles.postDate}>
-        Created at: {formatDate(post.createdAt)}
+        Created on {formatDate(post.createdAt)}
       </div>
     </div>
   );
