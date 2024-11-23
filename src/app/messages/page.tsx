@@ -95,42 +95,53 @@ function Messages() {
         newMessage.conversationId === lastOpenConversationId
       );
 
-      if (newMessage.conversationId === lastOpenConversationId) {
-        setOpenConversation((prevConversation) => ({
-          ...prevConversation!,
-          messages: [...prevConversation!.messages, newMessage],
-        }));
-      } else {
-        // const conversation = conversationList.find(
-        //   (conversationItem: IConversation) =>
-        //     conversationItem.id === newMessage.conversationId
-        // );
+      addNewMessageToConversationsState(newMessage);
 
-        setConversationList((prevList: IConversation[]) => {
-          const updatedList = prevList.map(
-            (conversationItem: IConversation) => {
-              if (conversationItem.id === newMessage.conversationId) {
-                return {
-                  ...conversationItem,
-                  messages: [...conversationItem.messages, newMessage],
-                };
-              }
-              return conversationItem;
-            }
-          );
+      // if (newMessage.conversationId === lastOpenConversationId) {
+      //   setOpenConversation((prevConversation) => ({
+      //     ...prevConversation!,
+      //     messages: [...prevConversation!.messages, newMessage],
+      //   }));
+      // }
+      // // const conversation = conversationList.find(
+      // //   (conversationItem: IConversation) =>
+      // //     conversationItem.id === newMessage.conversationId
+      // // );
 
-          return updatedList;
-        });
-      }
+      // setConversationList((prevList: IConversation[]) => {
+      //   const updatedList = prevList.map((conversationItem: IConversation) => {
+      //     if (conversationItem.id === newMessage.conversationId) {
+      //       return {
+      //         ...conversationItem,
+      //         messages: [...conversationItem.messages, newMessage],
+      //       };
+      //     }
+      //     return conversationItem;
+      //   });
+
+      //   return updatedList;
+      // });
+
       //     ...openConversation.messages!,
       //     messageData as IConversationMessage,
       //   ],
       // });
     });
 
-    socket.on("messageSent", (message) => {
-      console.log("New WebSocket message sent acknowledgement:", message);
-    });
+    socket.on(
+      "messageSent",
+      (response: {
+        success: boolean;
+        error: any;
+        message: IConversationMessage;
+      }) => {
+        console.log("New WebSocket message sent acknowledgement:", response);
+
+        if (!response.success) {
+          addStatusSendErrorToNewMessage(response.message);
+        }
+      }
+    );
 
     socket.on("newMessageNotification", (message) => {
       console.log(
@@ -191,6 +202,68 @@ function Messages() {
     fetchConversations();
   }, [hasFetched, isLoading, userIdString]);
 
+  function addNewMessageToConversationsState(newMessage: IConversationMessage) {
+    if (newMessage.conversationId === lastOpenConversationId) {
+      setOpenConversation((prevConversation) => ({
+        ...prevConversation!,
+        messages: [...prevConversation!.messages, newMessage],
+      }));
+    }
+
+    setConversationList((prevList: IConversation[]) => {
+      const updatedList = prevList.map((conversationItem: IConversation) => {
+        if (conversationItem.id === newMessage.conversationId) {
+          return {
+            ...conversationItem,
+            messages: [...conversationItem.messages, newMessage],
+          };
+        }
+        return conversationItem;
+      });
+
+      return updatedList;
+    });
+  }
+  function addStatusSendErrorToNewMessage(newMessage: IConversationMessage) {
+    console.log("Removing new message from conversatios state");
+    if (!openConversation || !conversationList.length) {
+      return;
+    }
+    console.log("Past guard: Removing new message from conversatios state");
+
+    const editedNewMessage = {
+      ...newMessage,
+      content:
+        newMessage.content + " Error: Failed to send message. Try again.",
+    };
+
+    if (newMessage.conversationId === lastOpenConversationId) {
+      setOpenConversation((prevConversation) => ({
+        ...prevConversation!,
+        messages: [
+          ...prevConversation!.messages.slice(0, -1),
+          editedNewMessage,
+        ],
+      }));
+    }
+
+    setConversationList((prevList: IConversation[]) => {
+      const updatedList = prevList.map((conversationItem: IConversation) => {
+        if (conversationItem.id === newMessage.conversationId) {
+          return {
+            ...conversationItem,
+            messages: [
+              ...conversationItem!.messages.slice(0, -1),
+              editedNewMessage,
+            ],
+          };
+        }
+        return conversationItem;
+      });
+
+      return updatedList;
+    });
+  }
   // useEffect(() => {
   //   memoizedCheckConversationBetweenUsers();
   // }, [memoizedCheckConversationBetweenUsers]);
@@ -363,13 +436,7 @@ function Messages() {
       // const data = await response.json();
       // console.log(`Send message response: ${JSON.stringify(data)}`);
       setTextContent("");
-      setOpenConversation((prevOpenConversation) => ({
-        ...prevOpenConversation!,
-        messages: [
-          ...prevOpenConversation!.messages!,
-          webSocketMessage as IConversationMessage,
-        ],
-      }));
+      addNewMessageToConversationsState(webSocketMessage);
     } catch (error) {
       const errorString = `Send message error: ${error}`;
       setError(errorString);
