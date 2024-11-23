@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import loginStyles from "./login.module.scss";
+import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 const LoginPage = () => {
   const { data: session, status } = useSession();
@@ -38,14 +40,24 @@ const LoginPage = () => {
     <div className={loginStyles.providersContainer}>
       <h2>Authentication Providers</h2>
 
-      {providers &&
+      {(providers &&
+        Object.values(providers).length &&
         Object.values(providers).map((provider) => (
           <div key={provider.name} className={loginStyles.provider}>
             <button onClick={() => signIn(provider.id, { redirect: true })}>
               Sign in with {provider.name}
             </button>
           </div>
-        ))}
+        ))) || (
+        <SkeletonTheme
+          baseColor="var(--gray-alpha-100);"
+          width={200}
+          height={50}
+          borderRadius={10}
+        >
+          <Skeleton style={{ marginTop: "50px" }} />
+        </SkeletonTheme>
+      )}
     </div>
   );
 };
