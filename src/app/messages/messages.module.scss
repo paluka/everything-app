@@ -3,6 +3,7 @@
   flex-direction: row;
 
   border: 1px #fff solid;
+  border-radius: 4px;
   min-height: 500px;
   padding: 50px;
 
@@ -11,10 +12,12 @@
     flex-direction: column;
 
     border: 1px #fff solid;
+    border-radius: 4px;
     padding: 50px;
 
     .conversationItem {
       border: 1px #fff solid;
+      border-radius: 4px;
       padding: 10px;
       cursor: pointer;
     }
@@ -25,6 +28,7 @@
     flex-direction: column;
 
     border: 1px #fff solid;
+    border-radius: 4px;
     padding: 50px;
 
     .conversationMessages {
@@ -32,21 +36,55 @@
       flex-direction: column;
       gap: 4px;
       border: 1px #fff solid;
+      border-radius: 4px;
       padding: 50px;
+
+      max-height: 500px;
+      overflow-x: hidden;
+      overflow-y: scroll;
 
       .messageContainer {
         padding: 10px;
-
         border: 1px #fff solid;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 0px;
 
-        .messageContent,
-        .messageDetails {
-          img {
+        .messageContent {
+          font-size: 1.1rem;
+          margin-bottom: 4px;
+        }
+        .messageSender {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.9rem;
+
+          .profileImage {
             border-radius: 4px;
           }
+        }
 
-          .messageDate {
-            font-size: 0.8rem;
+        .messageStatusDate {
+          font-size: 0.7rem;
+          white-space: nowrap;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+
+          .messageStatus {
+            display: flex;
+            align-items: center;
+
+            .statusIcon {
+              display: inline-flex;
+
+              svg {
+                margin-left: 4px;
+              }
+            }
           }
         }
       }

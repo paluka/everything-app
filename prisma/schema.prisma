@@ -54,11 +54,19 @@ model Participant {
   updatedAt      DateTime   @updatedAt
 }
 
+enum MessageStatus {
+  sent
+  delivered
+  read
+  failed
+}
+
 model Message {
   id             String   @id @default(cuid())
   conversationId String
   senderId       String
   content        String
+  status    MessageStatus @default(sent)
   conversation   Conversation  @relation(fields: [conversationId], references: [id])
   sender         User          @relation(fields: [senderId], references: [id])
   createdAt      DateTime      @default(now())

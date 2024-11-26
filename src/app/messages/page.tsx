@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -11,6 +11,7 @@ import { formatDate } from "@/utils/formatDate";
 import { getSocket } from "../../utils/socket";
 
 function Messages() {
+  const conversationMessagesRef = useRef(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasFetched, setHasFetched] = useState<boolean>(false);
   const [conversationList, setConversationList] = useState<IConversation[]>([]);
@@ -72,6 +73,15 @@ function Messages() {
   //   },
   //   [conversations, isLoading, userIdString]
   // );
+
+  useEffect(() => {
+    // Scroll to the bottom when the messages change
+    if (conversationMessagesRef.current) {
+      (conversationMessagesRef.current as HTMLDivElement).scrollTop = (
+        conversationMessagesRef.current as HTMLDivElement
+      ).scrollHeight;
+    }
+  }, [openConversation?.messages]);
 
   useEffect(() => {
     if (!userIdString) {
@@ -233,8 +243,9 @@ function Messages() {
 
     const editedNewMessage = {
       ...newMessage,
-      content:
-        newMessage.content + " Error: Failed to send message. Try again.",
+      // content:
+      //   newMessage.content + " Error: Failed to send message. Try again.",
+      status: "failed",
     };
 
     if (newMessage.conversationId === lastOpenConversationId) {
@@ -243,7 +254,7 @@ function Messages() {
         messages: [
           ...prevConversation!.messages.slice(0, -1),
           editedNewMessage,
-        ],
+        ] as IConversationMessage[],
       }));
     }
 
@@ -255,7 +266,7 @@ function Messages() {
             messages: [
               ...conversationItem!.messages.slice(0, -1),
               editedNewMessage,
-            ],
+            ] as IConversationMessage[],
           };
         }
         return conversationItem;
@@ -516,27 +527,86 @@ function Messages() {
       <div className={messagesStyles.conversationMessagesContainer}>
         {openConversation && (
           <>
-            <div className={messagesStyles.conversationMessages}>
+            <div
+              ref={conversationMessagesRef}
+              className={messagesStyles.conversationMessages}
+            >
               {openConversation?.messages!.map((message, index) => (
                 <div key={index} className={messagesStyles.messageContainer}>
                   <div className={messagesStyles.messageContent}>
                     {message.content}
                   </div>
-                  <div className={messagesStyles.messageDetails}>
-                    <div>
-                      <Image
-                        className={"profileImage"}
-                        src={message.sender.image}
-                        alt="Profile Image"
-                        width={20}
-                        height={20}
-                      />
-                      {message.sender.name}
-                    </div>
+                  <div className={messagesStyles.messageSender}>
+                    <Image
+                      className={messagesStyles.profileImage}
+                      src={message.sender.image}
+                      alt="Profile Image"
+                      width={15}
+                      height={15}
+                    />
+                    {message.sender.name}
+                  </div>
 
-                    <div
-                      className={messagesStyles.messageDate}
-                    >{`Sent on ${formatDate(message.createdAt)}`}</div>
+                  <div className={messagesStyles.messageStatusDate}>
+                    {`${formatDate(message.createdAt)}`}
+
+                    <div className={messagesStyles.messageStatus}>
+                      {/* {`Status: ${message.status}`} */}
+                      {message.status === "failed" && (
+                        <div
+                          className={messagesStyles.statusIcon}
+                          title="Failed to send"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="red"
+                          >
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                          </svg>
+                        </div>
+                      )}
+                      {message.status === "sent" && (
+                        <div className={messagesStyles.statusIcon} title="Sent">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="#999"
+                          >
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                          </svg>
+                        </div>
+                      )}
+                      {message.status === "sent" && (
+                        <div
+                          className={messagesStyles.statusIcon}
+                          title="Delivered"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="#4CAF50"
+                          >
+                            <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
+                          </svg>
+                        </div>
+                      )}
+                      {message.status === "sent" && (
+                        <div className={messagesStyles.statusIcon} title="Read">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="#0088ff"
+                          >
+                            <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

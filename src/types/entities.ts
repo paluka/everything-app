@@ -31,11 +31,19 @@ export interface IConversationParticipant {
   createdAt: string;
 }
 
+export enum MessageStatus {
+  SENT = "sent",
+  DELIVERED = "delivered",
+  READ = "read",
+  FAILED = "failed",
+}
+
 export interface IConversationMessage {
   id: string;
   conversationId: string;
   senderId: string;
   content: string;
+  status: MessageStatus;
   conversation: IConversation;
   sender: IUserProfile;
   createdAt: string;
