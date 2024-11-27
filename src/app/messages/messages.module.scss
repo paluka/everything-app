@@ -1,11 +1,12 @@
 .container {
   display: flex;
   flex-direction: row;
-
-  border: 1px #fff solid;
-  border-radius: 4px;
+  min-width: 750px;
   min-height: 500px;
-  padding: 50px;
+
+  // border: 1px #fff solid;
+  // border-radius: 4px;
+  // padding: 50px;
 
   .contextMenu {
     position: fixed;
@@ -37,10 +38,12 @@
   .conversationList {
     display: flex;
     flex-direction: column;
+    min-width: 25%;
+    max-width: 25%;
 
     border: 1px #fff solid;
     border-radius: 4px;
-    padding: 50px;
+    padding: 10px;
 
     .conversationItem {
       border: 1px #fff solid;
@@ -53,68 +56,169 @@
   .conversationMessagesContainer {
     display: flex;
     flex-direction: column;
+    min-width: 75%;
+    max-width: 75%;
 
     border: 1px #fff solid;
     border-radius: 4px;
-    padding: 50px;
+    // padding: 10px;
 
     .conversationMessages {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      border: 1px #fff solid;
-      border-radius: 4px;
-      padding: 50px;
+      gap: 15px;
+      // border: 1px #fff solid;
+      // border-radius: 4px;
+      padding: 10px;
 
       max-height: 500px;
       overflow-x: hidden;
       overflow-y: scroll;
 
-      .messageContainer {
-        padding: 10px;
-        border: 1px #fff solid;
-        border-radius: 4px;
+      .messageContainerSlot {
         display: flex;
-        flex-direction: column;
-        gap: 0px;
 
-        .messageContent {
-          font-size: 1.1rem;
-          margin-bottom: 4px;
+        &.messageContainerSlotSender {
+          justify-content: flex-end;
         }
-        .messageSender {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 0.9rem;
 
-          .profileImage {
-            border-radius: 4px;
+        &.messageContainerSlotReceiver {
+          justify-content: flex-start;
+        }
+
+        .messageContainer {
+          padding: 10px;
+          border: 1px #fff solid;
+          // border-radius: 4px;
+          display: flex;
+          flex-direction: column;
+          gap: 0px;
+
+          // width: min-content;
+
+          &.messageContainerSender {
+            border-radius: 10px 0 10px 10px;
           }
-        }
 
-        .messageStatusDate {
-          font-size: 0.7rem;
-          white-space: nowrap;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 8px;
+          &.messageContainerReceiver {
+            border-radius: 0 10px 10px 10px;
+          }
 
-          .messageStatus {
+          .messageContent {
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+          }
+
+          .messageSender {
             display: flex;
             align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            margin-bottom: 2px;
 
-            .statusIcon {
-              display: inline-flex;
+            .profileImage {
+              border-radius: 4px;
+            }
+          }
 
-              svg {
-                margin-left: 4px;
+          .messageStatusDate {
+            font-size: 0.7rem;
+            white-space: nowrap;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+
+            .messageStatus {
+              display: flex;
+              align-items: center;
+
+              .statusIcon {
+                display: inline-flex;
+
+                svg {
+                  margin-left: 4px;
+                }
               }
             }
           }
         }
       }
     }
+
+    .messageTextInputContainer {
+      padding: 10px 50px;
+      display: flex;
+      gap: 10px;
+      justify-content: space-around;
+
+      textarea {
+        resize: none;
+        width: 75%;
+        background-color: #fff;
+        color: #000;
+        padding: 10px;
+        border-radius: 10px;
+      }
+
+      button {
+        background-color: #5141e8;
+        color: #fff;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+        border-radius: 5px;
+
+        font-weight: 900;
+        width: 100px;
+
+        &:hover {
+          background-color: #3d2ae6;
+        }
+      }
+    }
   }
+
+  // src/app/messages/messages.module.scss
+
+  // .spinner {
+  //   display: flex;
+  //   justify-content: center;
+  //   align-items: center;
+  //   height: 100%; // Adjust as needed
+
+  //   .spinnerIcon {
+  //     animation: rotate 1s linear infinite;
+
+  //     .spinnerPath {
+  //       stroke: #4caf50; // Change to your desired color
+  //       stroke-linecap: round;
+  //       animation: dash 1.5s ease-in-out infinite;
+  //     }
+  //   }
+  // }
+
+  // @keyframes rotate {
+  //   0% {
+  //     transform: rotate(0deg);
+  //   }
+  //   100% {
+  //     transform: rotate(360deg);
+  //   }
+  // }
+
+  // @keyframes dash {
+  //   0% {
+  //     stroke-dasharray: 1, 200;
+  //     stroke-dashoffset: 0;
+  //   }
+  //   50% {
+  //     stroke-dasharray: 100, 200;
+  //     stroke-dashoffset: -15;
+  //   }
+  //   100% {
+  //     stroke-dasharray: 100, 200;
+  //     stroke-dashoffset: -125;
+  //   }
+  // }
 }

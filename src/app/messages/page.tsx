@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 import messagesStyles from "./messages.module.scss";
 import {
@@ -508,9 +510,6 @@ function Messages() {
 
   return (
     <div className={messagesStyles.container}>
-      {isLoading && <p>Loading...</p>}
-      {error && <p>{error}</p>}
-
       {contextMenu && (
         <div
           className={messagesStyles.contextMenu}
@@ -530,6 +529,37 @@ function Messages() {
       )}
 
       <div className={messagesStyles.conversationList}>
+        {isLoading ||
+          (!conversationList.length && !hasFetched && (
+            // <div className={messagesStyles.spinner}>
+            //   {/* SVG Spinner */}
+            //   <svg
+            //     xmlns="http://www.w3.org/2000/svg"
+            //     width="50"
+            //     height="50"
+            //     viewBox="0 0 50 50"
+            //     className={messagesStyles.spinnerIcon}
+            //   >
+            //     <circle
+            //       className={messagesStyles.spinnerPath}
+            //       cx="25"
+            //       cy="25"
+            //       r="20"
+            //       fill="none"
+            //       strokeWidth="5"
+            //     />
+            //   </svg>
+            // </div>
+            <SkeletonTheme
+              baseColor="var(--gray-alpha-100);"
+              height={40}
+              borderRadius={4}
+            >
+              <Skeleton count={3} style={{ marginBottom: "5px" }} />
+            </SkeletonTheme>
+          ))}
+        {error && <p>{error}</p>}
+
         {/* {!isLoading && !error && !!messageReceiverUserId ? (
           conversationWithMessageReceiver &&
           conversationWithMessageReceiver.length ? (
@@ -558,7 +588,7 @@ function Messages() {
         {!isLoading &&
           !error &&
           conversationList.map((conversationData: IConversation) => (
-            <div key={conversationData.id}>
+            <>
               {conversationData.participants
                 .filter(
                   (partcipantElement) =>
@@ -583,7 +613,7 @@ function Messages() {
                     </div>
                   );
                 })}
-            </div>
+            </>
           ))}
       </div>
 
@@ -597,112 +627,130 @@ function Messages() {
               {openConversation?.messages!.map((message, index) => (
                 <div
                   key={index}
-                  className={messagesStyles.messageContainer}
-                  onContextMenu={(e) => {
-                    if (
-                      message.senderId === userIdString &&
-                      message.status === MessageStatus.FAILED
-                    ) {
-                      e.preventDefault();
-                      // Get the bounding rectangle of the message container
-                      const rect = e.currentTarget.getBoundingClientRect();
-
-                      setContextMenu({
-                        x: e.pageX,
-                        y: rect.top + CONTEXT_MENU_HEIGHT,
-                        message: message,
-                      });
-                    }
-                  }}
+                  className={`${messagesStyles.messageContainerSlot} ${
+                    message.senderId === userIdString
+                      ? messagesStyles.messageContainerSlotSender
+                      : messagesStyles.messageContainerSlotReceiver
+                  }`}
                 >
-                  <div className={messagesStyles.messageContent}>
-                    {message.content}
-                  </div>
-                  <div className={messagesStyles.messageSender}>
-                    <Image
-                      className={messagesStyles.profileImage}
-                      src={message.sender.image}
-                      alt="Profile Image"
-                      width={15}
-                      height={15}
-                    />
-                    {message.sender.name}
-                  </div>
+                  <div
+                    className={`${messagesStyles.messageContainer} ${
+                      message.senderId === userIdString
+                        ? messagesStyles.messageContainerSender
+                        : messagesStyles.messageContainerReceiver
+                    }`}
+                    onContextMenu={(e) => {
+                      if (
+                        message.senderId === userIdString &&
+                        message.status === MessageStatus.FAILED
+                      ) {
+                        e.preventDefault();
+                        // Get the bounding rectangle of the message container
+                        const rect = e.currentTarget.getBoundingClientRect();
 
-                  <div className={messagesStyles.messageStatusDate}>
-                    {`${formatDate(message.createdAt)}`}
+                        setContextMenu({
+                          x: e.pageX,
+                          y: rect.top + CONTEXT_MENU_HEIGHT,
+                          message: message,
+                        });
+                      }
+                    }}
+                  >
+                    <div
+                      className={messagesStyles.messageContent}
+                      style={{
+                        textAlign:
+                          message.senderId === userIdString ? "right" : "unset",
+                      }}
+                    >
+                      {message.content}
+                    </div>
+                    <div className={messagesStyles.messageSender}>
+                      <Image
+                        className={messagesStyles.profileImage}
+                        src={message.sender.image}
+                        alt="Profile Image"
+                        width={15}
+                        height={15}
+                      />
+                      {message.sender.name}
+                    </div>
 
-                    {message.senderId === userIdString && (
-                      <div className={messagesStyles.messageStatus}>
-                        {/* {`Status: ${message.status}`} */}
-                        {message.status === MessageStatus.FAILED && (
-                          <div
-                            className={messagesStyles.statusIcon}
-                            title="Failed to send"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="red"
+                    <div className={messagesStyles.messageStatusDate}>
+                      {`${formatDate(message.createdAt)}`}
+
+                      {message.senderId === userIdString && (
+                        <div className={messagesStyles.messageStatus}>
+                          {/* {`Status: ${message.status}`} */}
+                          {message.status === MessageStatus.FAILED && (
+                            <div
+                              className={messagesStyles.statusIcon}
+                              title="Failed to send"
                             >
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-                            </svg>
-                          </div>
-                        )}
-                        {message.status === MessageStatus.SENT && (
-                          <div
-                            className={messagesStyles.statusIcon}
-                            title="Sent"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="#999"
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="red"
+                              >
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                              </svg>
+                            </div>
+                          )}
+                          {message.status === MessageStatus.SENT && (
+                            <div
+                              className={messagesStyles.statusIcon}
+                              title="Sent"
                             >
-                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                            </svg>
-                          </div>
-                        )}
-                        {message.status === MessageStatus.DELIVERED && (
-                          <div
-                            className={messagesStyles.statusIcon}
-                            title="Delivered"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="#4CAF50"
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="#999"
+                              >
+                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                              </svg>
+                            </div>
+                          )}
+                          {message.status === MessageStatus.DELIVERED && (
+                            <div
+                              className={messagesStyles.statusIcon}
+                              title="Delivered"
                             >
-                              <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
-                            </svg>
-                          </div>
-                        )}
-                        {message.status === MessageStatus.READ && (
-                          <div
-                            className={messagesStyles.statusIcon}
-                            title="Read"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="#0088ff"
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="#4CAF50"
+                              >
+                                <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
+                              </svg>
+                            </div>
+                          )}
+                          {message.status === MessageStatus.READ && (
+                            <div
+                              className={messagesStyles.statusIcon}
+                              title="Read"
                             >
-                              <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="#0088ff"
+                              >
+                                <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className={messagesStyles.messageTextContainer}>
+            <div className={messagesStyles.messageTextInputContainer}>
               <textarea
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
