@@ -112,17 +112,19 @@ const ProfileFeed = ({
           posts.map((post, index) => (
             <Post key={index} user={user} post={post} />
           ))} */}
-      {userProfile.posts?.map((post, index) => (
-        <Post
-          key={index}
-          userProfile={userProfile}
-          post={post}
-          contextMenu={contextMenu}
-          setContextMenu={setContextMenu}
-          userIsProfileOwner={userIsProfileOwner}
-          deletePost={deletePost}
-        />
-      ))}
+      {userProfile?.posts?.length
+        ? userProfile.posts.map((post, index) => (
+            <Post
+              key={index}
+              userProfile={userProfile}
+              post={post}
+              contextMenu={contextMenu}
+              setContextMenu={setContextMenu}
+              userIsProfileOwner={userIsProfileOwner}
+              deletePost={deletePost}
+            />
+          ))
+        : "Create your first post!"}
       {/* </SkeletonTheme> */}
     </div>
   );

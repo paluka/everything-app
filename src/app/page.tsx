@@ -178,7 +178,7 @@ export default function Home() {
                 deletePost={deletePost}
               />
             ))) ||
-            "Make your first post!")}
+            "Create your first post!")}
 
         {hasMore && (
           <button onClick={memoizedFetchPosts} disabled={isLoading}>
