@@ -4,7 +4,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -15,11 +15,12 @@ import CreatePost from "../../components/createPost/";
 import ProfileFeed from "../../components/profileFeed/";
 
 import profilesStyles from "./profiles.module.scss";
-import { IUserProfile } from "@/types/entities";
+import { IPost, IUserProfile } from "@/types/entities";
 
 const ProfilePage = () => {
   const [userProfile, setUserProfile] = useState<IUserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  // const [hasFetched, setHasFetched] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const router = useRouter();
 
@@ -44,7 +45,40 @@ const ProfilePage = () => {
 
   console.log("User ID string:", userIdString);
 
-  const memoizedFetchUserProfile = useCallback(
+  // const memoizedFetchUserProfile = useCallback(
+  //   async function fetchUserProfile() {
+  //     // if (status === "loading") return; // Do nothing while loading
+  //     // if (!session) router.push("/login"); // Redirect to login if not authenticated
+
+  //     if (isLoading || !userIdString || userProfile) {
+  //       return;
+  //     }
+
+  //     setIsLoading(true);
+  //     setError("");
+
+  //     try {
+  //       const response = await fetch(
+  //         `${process.env.NEXT_PUBLIC_BACKEND_URL}/users/${userIdString}`
+  //       );
+  //       // const response = await fetch(`/api/profiles/${userIdString}`);
+  //       if (!response.ok) {
+  //         throw new Error("Failed to fetch user profile");
+  //       }
+  //       const data = await response.json();
+  //       setUserProfile(data);
+  //     } catch (error) {
+  //       const errorString = `Failed to fetch profile: ${error}`;
+  //       setError(errorString);
+  //       console.error(errorString);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   },
+  //   [isLoading, userIdString, userProfile]
+  // );
+
+  useEffect(() => {
     async function fetchUserProfile() {
       // if (status === "loading") return; // Do nothing while loading
       // if (!session) router.push("/login"); // Redirect to login if not authenticated
@@ -73,13 +107,9 @@ const ProfilePage = () => {
       } finally {
         setIsLoading(false);
       }
-    },
-    [isLoading, userIdString, userProfile]
-  );
-
-  useEffect(() => {
-    memoizedFetchUserProfile();
-  }, [memoizedFetchUserProfile]);
+    }
+    fetchUserProfile();
+  }, [isLoading, userIdString, userProfile]);
 
   console.log("User data:", userProfile);
 
@@ -101,6 +131,17 @@ const ProfilePage = () => {
       router.push(`/messages?userId=${id}`);
     }
   };
+
+  function addNewlyCreatedPost(post: Partial<IPost>) {
+    if (userProfile) {
+      setUserProfile({
+        ...userProfile,
+        posts: userProfile.posts
+          ? [post as IPost, ...userProfile.posts]
+          : [post as IPost],
+      });
+    }
+  }
 
   return (
     <>
@@ -142,9 +183,20 @@ const ProfilePage = () => {
             </button>
           )}
 
-          {userIsProfileOwner && <CreatePost userId={userIdString} />}
+          {userIsProfileOwner && (
+            <CreatePost
+              userId={userIdString}
+              addNewlyCreatedPost={addNewlyCreatedPost}
+            />
+          )}
 
-          {(userProfile && <ProfileFeed userProfile={userProfile} />) || (
+          {(userProfile && (
+            <ProfileFeed
+              userProfile={userProfile}
+              setUserProfile={setUserProfile}
+              userIsProfileOwner={userIsProfileOwner}
+            />
+          )) || (
             <Skeleton count={5} height={68} style={{ marginBottom: "20px" }} />
           )}
         </SkeletonTheme>

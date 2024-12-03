@@ -7,6 +7,8 @@ import "react-loading-skeleton/dist/skeleton.css";
 
 import Post from "./components/post";
 import { IPost } from "@/types/entities";
+import { useSession } from "next-auth/react";
+import { useDeletePost } from "./hooks/useDeletePost";
 
 export default function Home() {
   // const [users, setUsers] = useState<IUserProfile[]>([]);
@@ -18,12 +20,53 @@ export default function Home() {
     paginated: false,
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [hasFetched, setHasFetched] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true); // To check if there are more posts to fetch
 
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    post: IPost | null;
+  } | null>(null);
+
+  const {
+    deletePost,
+    deletedPostId,
+    setDeletedPostId,
+    setHasFetched: setHasDeleteFetched,
+  } = useDeletePost();
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { data: session, status } = useSession({
+    required: false,
+    // required: true, // This will make sure the session is required and fetched before rendering
+    // onUnauthenticated() {
+    //   router.push("/login");
+    // },
+  });
+
   // const router = useRouter();
+
+  useEffect(() => {
+    if (deletedPostId) {
+      setPostsData({
+        ...postsData,
+        posts: postsData.posts.filter((post) => post.id != deletedPostId),
+      });
+
+      setDeletedPostId("");
+      setHasDeleteFetched(false);
+    }
+  }, [
+    deletedPostId,
+    setDeletedPostId,
+    setHasDeleteFetched,
+    postsData.posts,
+    postsData,
+  ]);
 
   const memoizedFetchPosts = useCallback(
     async function fetchPosts() {
@@ -64,6 +107,7 @@ export default function Home() {
 
         setCursor(data.nextCursor); // Update the cursor
         setHasMore(data.hasMore); // Check if there are more posts
+        setHasFetched(true);
       } catch (error) {
         setError(`Post fetching error: ${error}`);
         console.error("Post fetching error", error);
@@ -75,21 +119,22 @@ export default function Home() {
   );
 
   useEffect(() => {
-    // async function fetchUsers() {
-    //   fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users`)
-    //     // fetch("/api/profiles")
-    //     .then((res) => res.json())
-    //     .then((data) => setUsers(data))
-    //     .catch((error) => {
-    //       setError(true);
-    //       console.error("Error fetching users:", error);
-    //     });
-    // }
-
-    // fetchUsers();
-    // setIsLoading(false);
     memoizedFetchPosts();
   }, [memoizedFetchPosts]);
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+
+    if (contextMenu) {
+      document.addEventListener("click", handleClick);
+      document.addEventListener("contextmenu", handleClick);
+
+      return () => {
+        document.removeEventListener("click", handleClick);
+        document.removeEventListener("contextmenu", handleClick);
+      };
+    }
+  }, [contextMenu]);
 
   // console.log("Users data:", users);
 
@@ -102,7 +147,7 @@ export default function Home() {
         height={68}
         borderRadius={4}
       >
-        {(isLoading || !postsData.posts.length) && (
+        {(isLoading || !hasFetched) && (
           <Skeleton count={15} style={{ marginBottom: "20px" }} />
         )}
 
@@ -120,9 +165,20 @@ export default function Home() {
 
         {!isLoading &&
           !error &&
-          postsData.posts.map((post: IPost) => (
-            <Post key={post.id} userProfile={post.user} post={post} />
-          ))}
+          hasFetched &&
+          ((postsData.posts.length &&
+            postsData.posts.map((post: IPost) => (
+              <Post
+                key={post.id}
+                userProfile={post.user}
+                post={post}
+                contextMenu={contextMenu}
+                setContextMenu={setContextMenu}
+                userIsProfileOwner={session?.user?.id == post.userId}
+                deletePost={deletePost}
+              />
+            ))) ||
+            "Make your first post!")}
 
         {hasMore && (
           <button onClick={memoizedFetchPosts} disabled={isLoading}>

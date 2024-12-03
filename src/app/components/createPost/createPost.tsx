@@ -1,8 +1,15 @@
 import { useState } from "react";
 
 import createPostStyles from "./createPost.module.scss";
+import { IPost } from "@/types/entities";
 
-function CreatePost({ userId }: { userId: string }) {
+function CreatePost({
+  userId,
+  addNewlyCreatedPost,
+}: {
+  userId: string;
+  addNewlyCreatedPost: (post: Partial<IPost>) => void;
+}) {
   const [content, setContent] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -34,6 +41,13 @@ function CreatePost({ userId }: { userId: string }) {
 
       const data = await response.json();
       console.log(`Create post response: ${JSON.stringify(data)}`);
+
+      addNewlyCreatedPost({
+        content,
+        userId,
+        id: data.id,
+        createdAt: data.createdAt,
+      });
     } catch (error) {
       const errorString = `Post saving error: ${error}`;
       setError(errorString);
