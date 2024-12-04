@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -15,8 +15,10 @@ import {
 } from "@/types/entities";
 import { formatDate } from "@/utils/formatDate";
 import { getSocket } from "../../utils/socket";
+import { countUnreadMessages } from "@/utils/countUnreadMessages";
 
 const CONTEXT_MENU_HEIGHT = 40;
+const NEW_CONVERSATION_TEXT = "New Conversation";
 
 function Messages() {
   const [contextMenu, setContextMenu] = useState<{
@@ -25,67 +27,29 @@ function Messages() {
     message: IConversationMessage | null;
   } | null>(null);
   const conversationMessagesRef = useRef(null);
+  const hasFetchedRef = useRef(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasFetched, setHasFetched] = useState<boolean>(false);
   const [conversationList, setConversationList] = useState<IConversation[]>([]);
   const [openConversation, setOpenConversation] = useState<IConversation>();
   const [lastOpenConversationId, setLastOpenConversationId] =
     useState<string>("");
+
   const [textContent, setTextContent] = useState<string>("");
   const [error, setError] = useState<string>("");
   const router = useRouter();
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: session, status } = useSession({
+  const { data: session } = useSession({
     required: true, // This will make sure the session is required and fetched before rendering
     onUnauthenticated() {
       router.push("/login");
     },
   });
 
-  // console.log("Session user data", { sessionUser: session?.user });
-
   const userIdString = session?.user?.id;
 
   const searchParams = useSearchParams();
   const messageReceiverUserId = searchParams.get("userId");
-  // let messageReceiverUserId = "";
-
-  // if (Array.isArray(userId)) {
-  //   messageReceiverUserId = userId[0];
-  // } else {
-  //   messageReceiverUserId = userId;
-  // }
-
-  // console.log("User ID string:", userIdString);
-  // console.log("Message receiver user ID string:", messageReceiverUserId);
-
-  // const memoizedCheckConversationBetweenUsers = useCallback(
-  //   async function checkConversationBetweenUsers() {
-  //     if (isLoading || !userIdString || conversations) {
-  //       return;
-  //     }
-
-  //     try {
-  //       setIsLoading(true);
-  //       setError("");
-
-  //       const response = await fetch(
-  //         `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations/user/${userIdString}`
-  //       );
-
-  //       const data = await response.json();
-  //       setConversations(data);
-  //     } catch (error) {
-  //       const errorString = `Error fetching conversations for user ${userIdString}. Error: ${error}`;
-  //       console.error(errorString);
-  //       setError(errorString);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   },
-  //   [conversations, isLoading, userIdString]
-  // );
 
   // Close the context menu when left clicking outside of it
   useEffect(() => {
@@ -111,193 +75,118 @@ function Messages() {
     }
   }, [openConversation?.messages]);
 
-  useEffect(() => {
-    if (!userIdString) {
-      return;
-    }
-    const socket = getSocket(userIdString);
-
-    socket.on("connect", () => {
-      console.log("WebSocket connected:", socket.id);
-    });
-
-    // socket.on("receiveMessage", (message) => {
-    //   console.log("New WebSocket message received:", message);
-    // });
-
-    socket.on("receiveMessage", (newMessage: IConversationMessage) => {
-      console.log("Received a new websocket message", { newMessage });
-      console.log(
-        newMessage.conversationId,
-        lastOpenConversationId,
-        newMessage.conversationId === lastOpenConversationId
-      );
-
-      addNewMessageToConversationsState(newMessage);
-
-      // if (newMessage.conversationId === lastOpenConversationId) {
-      //   setOpenConversation((prevConversation) => ({
-      //     ...prevConversation!,
-      //     messages: [...prevConversation!.messages, newMessage],
-      //   }));
-      // }
-      // // const conversation = conversationList.find(
-      // //   (conversationItem: IConversation) =>
-      // //     conversationItem.id === newMessage.conversationId
-      // // );
-
-      // setConversationList((prevList: IConversation[]) => {
-      //   const updatedList = prevList.map((conversationItem: IConversation) => {
-      //     if (conversationItem.id === newMessage.conversationId) {
-      //       return {
-      //         ...conversationItem,
-      //         messages: [...conversationItem.messages, newMessage],
-      //       };
-      //     }
-      //     return conversationItem;
-      //   });
-
-      //   return updatedList;
-      // });
-
-      //     ...openConversation.messages!,
-      //     messageData as IConversationMessage,
-      //   ],
-      // });
-    });
-
-    socket.on(
-      "messageStatusUpdate",
-      (response: {
-        status: MessageStatus;
-        error: any;
-        message: IConversationMessage;
-      }) => {
-        console.log("New WebSocket message status update:", response);
-
-        // if (response.status === MessageStatus.FAILED) {
-        updateMessageStatus(response.message, response.status);
-        // }
+  const addNewMessageToConversationsState = useCallback(
+    function (newMessage: IConversationMessage) {
+      if (newMessage.conversationId === lastOpenConversationId) {
+        setOpenConversation((prevConversation) => ({
+          ...prevConversation!,
+          messages: [...prevConversation!.messages, newMessage],
+        }));
       }
-    );
 
-    socket.on("newMessageNotification", (message) => {
-      console.log(
-        "New WebSocket message in conversation notification received:",
-        { message }
-      );
-      // Optionally, update state or show a toast notification
-    });
+      setConversationList((prevList: IConversation[]) => {
+        const updatedList = prevList.map((conversationItem: IConversation) => {
+          if (conversationItem.id === newMessage.conversationId) {
+            return {
+              ...conversationItem,
+              messages: [...conversationItem.messages, newMessage],
+            };
+          }
+          return conversationItem;
+        });
 
-    return () => {
-      socket.off("receiveMessage"); // Clean up event listeners
-      socket.off("messageStatusUpdate");
-      socket.off("newMessageNotification");
-      // Optionally, disconnect socket if no other components need it
-      // socket.disconnect();
-    };
-  }, [userIdString, lastOpenConversationId]);
+        return updatedList;
+      });
+    },
+    [lastOpenConversationId]
+  );
 
-  useEffect(() => {
-    async function fetchConversations() {
-      // console.log("Fetch conversations", {
-      //   isLoading,
-      //   userIdString,
-      //   hasFetched,
-      // });
-      if (isLoading || !userIdString || hasFetched) {
+  const updateMessageStatus = useCallback(
+    function (
+      newMessage: IConversationMessage,
+      newMessageStatus: MessageStatus
+    ) {
+      console.log("Removing new message from conversation state");
+
+      if (!openConversation || !conversationList.length) {
         return;
       }
 
-      // console.log("Fetching conversations");
-      try {
-        setIsLoading(true);
-        setError("");
+      const editedNewMessage = {
+        ...newMessage,
+        status: newMessageStatus,
+      };
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations/user/${userIdString}`
-        );
-
-        // console.log("Fetching conversations:", { response });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch conversations");
-        }
-
-        const data = await response.json();
-        // console.log("Received conversations", { data });
-        setConversationList(data);
-      } catch (error) {
-        const errorString = `Error fetching conversations for user ${userIdString}. Error: ${error}`;
-        console.error(errorString);
-        setError(errorString);
-      } finally {
-        setIsLoading(false);
-        setHasFetched(true);
+      if (newMessage.conversationId === lastOpenConversationId) {
+        setOpenConversation((prevConversation) => ({
+          ...prevConversation!,
+          messages: [
+            ...prevConversation!.messages.slice(0, -1),
+            editedNewMessage,
+          ] as IConversationMessage[],
+        }));
       }
-    }
 
-    fetchConversations();
-  }, [hasFetched, isLoading, userIdString]);
+      setConversationList((prevList: IConversation[]) => {
+        const updatedList = prevList.map((conversationItem: IConversation) => {
+          if (conversationItem.id === newMessage.conversationId) {
+            return {
+              ...conversationItem,
+              messages: [
+                ...conversationItem!.messages.slice(0, -1),
+                editedNewMessage,
+              ] as IConversationMessage[],
+            };
+          }
+          return conversationItem;
+        });
 
-  function addNewMessageToConversationsState(newMessage: IConversationMessage) {
-    if (newMessage.conversationId === lastOpenConversationId) {
-      setOpenConversation((prevConversation) => ({
-        ...prevConversation!,
-        messages: [...prevConversation!.messages, newMessage],
-      }));
-    }
-
-    setConversationList((prevList: IConversation[]) => {
-      const updatedList = prevList.map((conversationItem: IConversation) => {
-        if (conversationItem.id === newMessage.conversationId) {
-          return {
-            ...conversationItem,
-            messages: [...conversationItem.messages, newMessage],
-          };
-        }
-        return conversationItem;
+        return updatedList;
       });
+    },
+    [conversationList.length, lastOpenConversationId, openConversation]
+  );
 
-      return updatedList;
-    });
-  }
-  function updateMessageStatus(
-    newMessage: IConversationMessage,
-    newMessageStatus: MessageStatus
+  const emitMessageStatusToRead = useCallback(function (
+    conversation: IConversation,
+    userIdString: string
   ) {
-    console.log("Removing new message from conversatios state");
-    if (!openConversation || !conversationList.length) {
-      return;
-    }
-    console.log("Past guard: Removing new message from conversatios state");
-
-    const editedNewMessage = {
-      ...newMessage,
-      // content:
-      //   newMessage.content + " Error: Failed to send message. Try again.",
-      status: newMessageStatus,
-    };
-
-    if (newMessage.conversationId === lastOpenConversationId) {
-      setOpenConversation((prevConversation) => ({
-        ...prevConversation!,
-        messages: [
-          ...prevConversation!.messages.slice(0, -1),
-          editedNewMessage,
-        ] as IConversationMessage[],
-      }));
-    }
+    const socket = getSocket(userIdString);
 
     setConversationList((prevList: IConversation[]) => {
       const updatedList = prevList.map((conversationItem: IConversation) => {
-        if (conversationItem.id === newMessage.conversationId) {
+        if (conversationItem.id === conversation.id) {
+          // console.log({ messages: conversationItem.messages });
+
+          const newMessagesList = conversationItem.messages?.map(
+            (messageItem) => {
+              let newStatus = messageItem.status;
+              // console.log("Inside", { messageItem, userIdString });
+
+              if (
+                messageItem.senderId != userIdString &&
+                (messageItem.status === MessageStatus.DELIVERED ||
+                  messageItem.status === MessageStatus.SENT)
+              ) {
+                newStatus = MessageStatus.READ;
+                messageItem.status = newStatus;
+
+                // console.log("emitting status updates");
+                socket.emit("statusUpdate", {
+                  conversation,
+                  message: messageItem,
+                  newStatus,
+                });
+              }
+              return {
+                ...messageItem,
+                status: newStatus,
+              };
+            }
+          );
           return {
             ...conversationItem,
-            messages: [
-              ...conversationItem!.messages.slice(0, -1),
-              editedNewMessage,
-            ] as IConversationMessage[],
+            messages: newMessagesList,
           };
         }
         return conversationItem;
@@ -305,120 +194,27 @@ function Messages() {
 
       return updatedList;
     });
-  }
-  // useEffect(() => {
-  //   memoizedCheckConversationBetweenUsers();
-  // }, [memoizedCheckConversationBetweenUsers]);
 
-  // const conversationWithMessageReceiver = useMemo(
-  //   () =>
-  //     !isLoading &&
-  //     !error &&
-  //     messageReceiverUserId &&
-  //     conversationList.filter((conversationData: IConversation) =>
-  //       //conversationData.participants.includes(messageReceiverUserId)
-  //       conversationData.participants.some(
-  //         (participant: IConversationParticipant) =>
-  //           participant.id === messageReceiverUserId
-  //       )
-  //     ),
-  //   [conversationList, error, isLoading, messageReceiverUserId]
-  // );
-
-  // // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // async function handleCreateConversation() {
-  //   if (isLoading) {
-  //     return;
-  //   }
-
-  //   const conversationData = {
-  //     // name: "Conversation between User A and User B",
-  //     participants: [
-  //       { userId: userIdString }, // User A
-  //       { userId: messageReceiverUserId }, // User B
-  //     ],
-  //     messages: [
-  //       {
-  //         content: "Hello, how are you?",
-  //         senderId: userIdString, // User A is sending the first message
-  //       },
-  //     ],
-  //   };
-
-  //   try {
-  //     setError("");
-  //     setIsLoading(true);
-
-  //     const response = await fetch(
-  //       `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations`,
-  //       {
-  //         method: "POST",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: JSON.stringify(conversationData),
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to create the conversation");
-  //     }
-
-  //     const data = await response.json();
-  //     console.log(`Create conversation response: ${JSON.stringify(data)}`);
-  //   } catch (error) {
-  //     const errorString = `Create conversation error: ${error}`;
-  //     setError(errorString);
-  //     console.error(errorString);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // }
-
-  // console.log({
-  //   isLoading,
-  //   error,
-  //   conversationList,
-  //   conversationWithMessageReceiver,
-  //   condition: !isLoading && !error && !!messageReceiverUserId,
-  // });
-
-  function handleOpenConversation(conversation: IConversation) {
-    if (!userIdString || conversation.id === lastOpenConversationId) {
-      return;
-    }
-    setOpenConversation(conversation);
-    setLastOpenConversationId(conversation.id);
-
-    // const socket = getSocket(userIdString);
-
-    // console.log("joining room", conversation.id);
-    // socket.emit("joinRoom", conversation.id);
-
-    // Listen for new messages
-    // socket.on("receiveMessage", (newMessage) => {
-    //   console.log("Received a new websocket message", newMessage);
-
-    //   setOpenConversation((prevConversation) => ({
-    //     ...prevConversation!,
-    //     messages: [...prevConversation!.messages, newMessage],
-    //   }));
-    //   //     ...openConversation.messages!,
-    //   //     messageData as IConversationMessage,
-    //   //   ],
-    //   // });
+    // conversation.messages?.forEach((messageItem) => {
+    //   messageItem.status = MessageStatus.READ;
     // });
+  },
+  []);
 
-    console.log("Open conversation", { conversation });
-  }
+  const handleOpenConversation = useCallback(
+    function (conversation: IConversation) {
+      if (!userIdString || conversation.id === lastOpenConversationId) {
+        return;
+      }
 
-  // function handleSendWebSocketMessage(content) {
-  //   socket.emit("sendMessage", {
-  //     conversationId,
-  //     senderId: userId,
-  //     message: content,
-  //   });
-  // }
+      emitMessageStatusToRead(conversation, userIdString);
+      setOpenConversation(conversation);
+      setLastOpenConversationId(conversation.id);
+
+      console.log("Open conversation", { conversation });
+    },
+    [lastOpenConversationId, emitMessageStatusToRead, userIdString]
+  );
 
   async function handleSendMessage(conversation: IConversation) {
     if (
@@ -431,34 +227,10 @@ function Messages() {
       return;
     }
 
-    // const messageData: Partial<IConversationMessage> = {
-    //   content: textContent,
-    //   sender: {
-    //     ...session?.user,
-    //   },
-    //   conversation: {
-    //     id: conversation.id,
-    //   },
-    // } as Partial<IConversationMessage>;
-
     try {
       setError("");
       setIsLoading(true);
 
-      // const response = await fetch(
-      //   `${process.env.NEXT_PUBLIC_BACKEND_URL}/messages`,
-      //   {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //     },
-      //     body: JSON.stringify(messageData),
-      //   }
-      // );
-
-      // if (!response.ok) {
-      //   throw new Error("Failed to send the message");
-      // }
       const socket = getSocket(userIdString);
 
       const webSocketMessage = {
@@ -475,8 +247,6 @@ function Messages() {
       console.log("Sending message over WebSockets:", webSocketMessage);
       socket.emit("sendMessage", webSocketMessage);
 
-      // const data = await response.json();
-      // console.log(`Send message response: ${JSON.stringify(data)}`);
       setTextContent("");
       addNewMessageToConversationsState(webSocketMessage);
     } catch (error) {
@@ -494,9 +264,6 @@ function Messages() {
     const socket = getSocket(userIdString);
     console.log("Retrying failed message:", message);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // const { status, ...messageToSend } = message;
-
     const newMessage = { ...message, createdAt: new Date().toString() };
 
     socket.emit("sendMessage", newMessage);
@@ -504,9 +271,163 @@ function Messages() {
     updateMessageStatus(newMessage, MessageStatus.SENT);
   }
 
-  // if (openConversation) {
-  //   console.log("Open Conversation", { openConversation });
-  // }
+  useEffect(() => {
+    async function fetchConversations() {
+      if (isLoading || !userIdString || hasFetched || hasFetchedRef.current) {
+        return;
+      }
+
+      try {
+        hasFetchedRef.current = true;
+        setHasFetched(true);
+        setIsLoading(true);
+        setError("");
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations/user/${userIdString}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch conversations");
+        }
+
+        const conversationDataList = await response.json();
+
+        if (messageReceiverUserId) {
+          let hasFound = false;
+
+          if (conversationDataList.length) {
+            hasFound = conversationDataList.some((conversationData) =>
+              conversationData.participants.some(
+                (participantItem) =>
+                  participantItem.userId === messageReceiverUserId
+              )
+            );
+          }
+
+          console.log(`HAS FOUND MESSAGE RECEIVER CONVERSATION: ${hasFound}`, {
+            conversationDataList,
+          });
+
+          if (!hasFound) {
+            const responseCreate = await fetch(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  participants: [
+                    { userId: userIdString },
+                    { userId: messageReceiverUserId },
+                  ],
+                  messages: [],
+                }),
+              }
+            );
+
+            if (!responseCreate.ok) {
+              throw new Error("Failed to create conversation");
+            }
+
+            const createdConversation = await responseCreate.json();
+
+            console.log("CREATED CONVERSATION:", { createdConversation });
+
+            setConversationList([...conversationDataList, createdConversation]);
+            handleOpenConversation(createdConversation);
+          } else {
+            setConversationList(conversationDataList);
+          }
+        } else {
+          setConversationList(conversationDataList);
+        }
+      } catch (error) {
+        const errorString = `Error fetching conversations for user ${userIdString}. Error: ${error}`;
+        console.error(errorString);
+        setError(errorString);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchConversations();
+  }, [
+    handleOpenConversation,
+    hasFetched,
+    isLoading,
+    messageReceiverUserId,
+    userIdString,
+  ]);
+
+  useEffect(() => {
+    if (!userIdString) {
+      return;
+    }
+    const socket = getSocket(userIdString);
+
+    socket.on("connect", () => {
+      console.log("WebSocket connected:", socket.id);
+    });
+
+    socket.on("receiveMessage", (newMessage: IConversationMessage) => {
+      console.log("Received a new websocket message", { newMessage });
+      // console.log(
+      //   newMessage.conversationId,
+      //   lastOpenConversationId,
+      //   newMessage.conversationId === lastOpenConversationId
+      // );
+
+      if (newMessage.conversationId === lastOpenConversationId) {
+        newMessage.status = MessageStatus.READ;
+
+        socket.emit("statusUpdate", {
+          conversation: openConversation,
+          message: newMessage,
+          newStatus: MessageStatus.READ,
+        });
+      }
+      addNewMessageToConversationsState(newMessage);
+    });
+
+    socket.on(
+      "messageStatusUpdate",
+      (response: {
+        status: MessageStatus;
+        error: any;
+        message: IConversationMessage;
+      }) => {
+        console.log("New WebSocket message status update:", response);
+
+        updateMessageStatus(response.message, response.status);
+      }
+    );
+
+    socket.on("newMessageNotification", (message) => {
+      console.log(
+        "New WebSocket message in conversation notification received:",
+        { message }
+
+        // TODO:
+        // Add toast notification
+      );
+    });
+
+    return () => {
+      socket.off("receiveMessage"); // Clean up event listeners
+      socket.off("messageStatusUpdate");
+      socket.off("newMessageNotification");
+      // Optionally, disconnect socket if no other components need it
+      // socket.disconnect();
+    };
+  }, [
+    userIdString,
+    lastOpenConversationId,
+    addNewMessageToConversationsState,
+    updateMessageStatus,
+    openConversation,
+  ]);
 
   return (
     <div className={messagesStyles.container}>
@@ -560,61 +481,60 @@ function Messages() {
           ))}
         {error && <p>{error}</p>}
 
-        {/* {!isLoading && !error && !!messageReceiverUserId ? (
-          conversationWithMessageReceiver &&
-          conversationWithMessageReceiver.length ? (
-            conversationWithMessageReceiver.map(
-              (conversationData: IConversation) => (
-                <div key={conversationData.id}>
-                  {conversationData.participants.map((participantItem) => (
-                    <div key={participantItem.id}>
-                      {participantItem.user.name}
-                    </div>
-                  ))}
-                </div>
-              )
-            )
-          ) : (
-            <div>
-              <button onClick={handleCreateConversation}>
-                Create Conversation
-              </button>
-            </div>
-          )
-        ) : (
-          ""
-        )} */}
-
         {!isLoading &&
           !error &&
-          conversationList.map((conversationData: IConversation) => (
-            <>
-              {conversationData.participants
-                .filter(
-                  (partcipantElement) =>
-                    partcipantElement.userId !== userIdString
-                )
-                .map((participantItem) => {
-                  if (
-                    messageReceiverUserId &&
-                    participantItem.userId === messageReceiverUserId &&
-                    !openConversation
-                  ) {
-                    setOpenConversation(conversationData);
-                  }
+          conversationList.map(
+            (conversationData: IConversation, index: number) => (
+              <div key={index}>
+                {conversationData.participants
+                  .filter(
+                    (partcipantElement) =>
+                      partcipantElement.userId !== userIdString
+                  )
+                  .map((participantItem) => {
+                    if (
+                      messageReceiverUserId &&
+                      participantItem.userId === messageReceiverUserId &&
+                      !openConversation
+                    ) {
+                      handleOpenConversation(conversationData);
+                    }
 
-                  return (
-                    <div
-                      className={messagesStyles.conversationItem}
-                      key={participantItem.id}
-                      onClick={() => handleOpenConversation(conversationData)}
-                    >
-                      {participantItem.user.name}
-                    </div>
-                  );
-                })}
-            </>
-          ))}
+                    return (
+                      <div
+                        className={`${messagesStyles.conversationItem} ${
+                          openConversation?.participants.some(
+                            (participantEntity) =>
+                              participantEntity.userId ===
+                              participantItem.userId
+                          )
+                            ? messagesStyles.selectedConversation
+                            : ""
+                        }`}
+                        key={participantItem.id}
+                        onClick={() => handleOpenConversation(conversationData)}
+                      >
+                        {participantItem.user.name || NEW_CONVERSATION_TEXT}
+                        {/* {console.log({
+                          lastOpenConversationId,
+                          cid: conversationData.id,
+                          id: openConversation?.id,
+                        }) === undefined && <div></div>} */}
+                        {lastOpenConversationId !== conversationData.id &&
+                          countUnreadMessages(
+                            conversationData.messages,
+                            userIdString
+                          ) > 0 && (
+                            <div
+                              className={messagesStyles.newMessageNotification}
+                            />
+                          )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )
+          )}
       </div>
 
       <div className={messagesStyles.conversationMessagesContainer}>
@@ -624,130 +544,134 @@ function Messages() {
               ref={conversationMessagesRef}
               className={messagesStyles.conversationMessages}
             >
-              {openConversation?.messages!.map((message, index) => (
-                <div
-                  key={index}
-                  className={`${messagesStyles.messageContainerSlot} ${
-                    message.senderId === userIdString
-                      ? messagesStyles.messageContainerSlotSender
-                      : messagesStyles.messageContainerSlotReceiver
-                  }`}
-                >
-                  <div
-                    className={`${messagesStyles.messageContainer} ${
-                      message.senderId === userIdString
-                        ? messagesStyles.messageContainerSender
-                        : messagesStyles.messageContainerReceiver
-                    }`}
-                    onContextMenu={(e) => {
-                      if (
-                        message.senderId === userIdString &&
-                        message.status === MessageStatus.FAILED
-                      ) {
-                        e.preventDefault();
-                        // Get the bounding rectangle of the message container
-                        const rect = e.currentTarget.getBoundingClientRect();
-
-                        setContextMenu({
-                          x: e.pageX,
-                          y: rect.top + CONTEXT_MENU_HEIGHT,
-                          message: message,
-                        });
-                      }
-                    }}
-                  >
+              {openConversation?.messages?.length
+                ? openConversation.messages.map((message, index) => (
                     <div
-                      className={messagesStyles.messageContent}
-                      style={{
-                        textAlign:
-                          message.senderId === userIdString ? "right" : "unset",
-                      }}
+                      key={index}
+                      className={`${messagesStyles.messageContainerSlot} ${
+                        message.senderId === userIdString
+                          ? messagesStyles.messageContainerSlotSender
+                          : messagesStyles.messageContainerSlotReceiver
+                      }`}
                     >
-                      {message.content}
-                    </div>
-                    <div className={messagesStyles.messageSender}>
-                      <Image
-                        className={messagesStyles.profileImage}
-                        src={message.sender.image}
-                        alt="Profile Image"
-                        width={15}
-                        height={15}
-                      />
-                      {message.sender.name}
-                    </div>
+                      <div
+                        className={`${messagesStyles.messageContainer} ${
+                          message.senderId === userIdString
+                            ? messagesStyles.messageContainerSender
+                            : messagesStyles.messageContainerReceiver
+                        }`}
+                        onContextMenu={(e) => {
+                          if (
+                            message.senderId === userIdString &&
+                            message.status === MessageStatus.FAILED
+                          ) {
+                            e.preventDefault();
+                            // Get the bounding rectangle of the message container
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
 
-                    <div className={messagesStyles.messageStatusDate}>
-                      {`${formatDate(message.createdAt)}`}
+                            setContextMenu({
+                              x: e.pageX,
+                              y: rect.top + CONTEXT_MENU_HEIGHT,
+                              message: message,
+                            });
+                          }
+                        }}
+                      >
+                        <div
+                          className={messagesStyles.messageContent}
+                          style={{
+                            textAlign:
+                              message.senderId === userIdString
+                                ? "right"
+                                : "unset",
+                          }}
+                        >
+                          {message.content}
+                        </div>
+                        <div className={messagesStyles.messageSender}>
+                          <Image
+                            className={messagesStyles.profileImage}
+                            src={message.sender.image}
+                            alt="Profile Image"
+                            width={15}
+                            height={15}
+                          />
+                          {message.sender.name}
+                        </div>
 
-                      {message.senderId === userIdString && (
-                        <div className={messagesStyles.messageStatus}>
-                          {/* {`Status: ${message.status}`} */}
-                          {message.status === MessageStatus.FAILED && (
-                            <div
-                              className={messagesStyles.statusIcon}
-                              title="Failed to send"
-                            >
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="red"
-                              >
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-                              </svg>
-                            </div>
-                          )}
-                          {message.status === MessageStatus.SENT && (
-                            <div
-                              className={messagesStyles.statusIcon}
-                              title="Sent"
-                            >
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="#999"
-                              >
-                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                              </svg>
-                            </div>
-                          )}
-                          {message.status === MessageStatus.DELIVERED && (
-                            <div
-                              className={messagesStyles.statusIcon}
-                              title="Delivered"
-                            >
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="#4CAF50"
-                              >
-                                <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
-                              </svg>
-                            </div>
-                          )}
-                          {message.status === MessageStatus.READ && (
-                            <div
-                              className={messagesStyles.statusIcon}
-                              title="Read"
-                            >
-                              <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="#0088ff"
-                              >
-                                <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
-                              </svg>
+                        <div className={messagesStyles.messageStatusDate}>
+                          {`${formatDate(message.createdAt)}`}
+
+                          {message.senderId === userIdString && (
+                            <div className={messagesStyles.messageStatus}>
+                              {message.status === MessageStatus.FAILED && (
+                                <div
+                                  className={messagesStyles.statusIcon}
+                                  title="Failed to send"
+                                >
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="red"
+                                  >
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                                  </svg>
+                                </div>
+                              )}
+                              {message.status === MessageStatus.SENT && (
+                                <div
+                                  className={messagesStyles.statusIcon}
+                                  title="Sent"
+                                >
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="#999"
+                                  >
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                  </svg>
+                                </div>
+                              )}
+                              {message.status === MessageStatus.DELIVERED && (
+                                <div
+                                  className={messagesStyles.statusIcon}
+                                  title="Delivered"
+                                >
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="#0088ff"
+                                  >
+                                    <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
+                                  </svg>
+                                </div>
+                              )}
+                              {message.status === MessageStatus.READ && (
+                                <div
+                                  className={messagesStyles.statusIcon}
+                                  title="Read"
+                                >
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="#4CAF50"
+                                  >
+                                    <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
+                                  </svg>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  ))
+                : "Send your first message!"}
             </div>
 
             <div className={messagesStyles.messageTextInputContainer}>
