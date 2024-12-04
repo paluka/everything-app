@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-// import { User } from "next-auth";
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
@@ -11,7 +10,6 @@ import { useSession } from "next-auth/react";
 import { useDeletePost } from "./hooks/useDeletePost";
 
 export default function Home() {
-  // const [users, setUsers] = useState<IUserProfile[]>([]);
   const [postsData, setPostsData] = useState<{
     posts: IPost[];
     paginated: boolean;
@@ -39,16 +37,9 @@ export default function Home() {
     setHasFetched: setHasDeleteFetched,
   } = useDeletePost();
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: session, status } = useSession({
+  const { data: session } = useSession({
     required: false,
-    // required: true, // This will make sure the session is required and fetched before rendering
-    // onUnauthenticated() {
-    //   router.push("/login");
-    // },
   });
-
-  // const router = useRouter();
 
   useEffect(() => {
     if (deletedPostId) {
@@ -136,8 +127,6 @@ export default function Home() {
     }
   }, [contextMenu]);
 
-  // console.log("Users data:", users);
-
   console.log("Posts data:", postsData);
 
   return (
@@ -152,16 +141,6 @@ export default function Home() {
         )}
 
         {error && <p>{error}</p>}
-
-        {/* {!isLoading &&
-          !error &&
-          users.map((userProfile: IUserProfile) => (
-            <div key={userProfile.id}>
-              {userProfile.posts?.map((post, index) => (
-                <Post key={index} userProfile={userProfile} post={post} />
-              ))}
-            </div>
-          ))} */}
 
         {!isLoading &&
           !error &&

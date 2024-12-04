@@ -1,8 +1,8 @@
 // app/api/posts/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client"; // or import from your data source setup
+import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient(); // or use your existing database client
+const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc", // Orders posts from most recent to oldest
       },
-    }); // Adjust according to your data fetching method
+    });
     return NextResponse.json(posts);
   } catch (error) {
     console.error("Error fetching posts", error);

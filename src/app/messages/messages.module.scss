@@ -4,10 +4,6 @@
   min-width: 750px;
   min-height: 500px;
 
-  // border: 1px #fff solid;
-  // border-radius: 4px;
-  // padding: 50px;
-
   .contextMenu {
     position: fixed;
     background: #000;
@@ -16,7 +12,6 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     padding: 10px;
     z-index: 1000;
-    // height: 100px;
     white-space: nowrap;
     cursor: pointer;
 
@@ -27,10 +22,8 @@
     button {
       display: block;
       width: 100%;
-      // padding: 8px 12px;
       border: none;
       background: none;
-      // text-align: left;
       cursor: pointer;
     }
   }
@@ -61,14 +54,11 @@
 
     border: 1px #fff solid;
     border-radius: 4px;
-    // padding: 10px;
 
     .conversationMessages {
       display: flex;
       flex-direction: column;
       gap: 15px;
-      // border: 1px #fff solid;
-      // border-radius: 4px;
       padding: 10px;
 
       max-height: 500px;
@@ -89,12 +79,9 @@
         .messageContainer {
           padding: 10px;
           border: 1px #fff solid;
-          // border-radius: 4px;
           display: flex;
           flex-direction: column;
           gap: 0px;
-
-          // width: min-content;
 
           &.messageContainerSender {
             border-radius: 10px 0 10px 10px;
@@ -178,47 +165,4 @@
       }
     }
   }
-
-  // src/app/messages/messages.module.scss
-
-  // .spinner {
-  //   display: flex;
-  //   justify-content: center;
-  //   align-items: center;
-  //   height: 100%; // Adjust as needed
-
-  //   .spinnerIcon {
-  //     animation: rotate 1s linear infinite;
-
-  //     .spinnerPath {
-  //       stroke: #4caf50; // Change to your desired color
-  //       stroke-linecap: round;
-  //       animation: dash 1.5s ease-in-out infinite;
-  //     }
-  //   }
-  // }
-
-  // @keyframes rotate {
-  //   0% {
-  //     transform: rotate(0deg);
-  //   }
-  //   100% {
-  //     transform: rotate(360deg);
-  //   }
-  // }
-
-  // @keyframes dash {
-  //   0% {
-  //     stroke-dasharray: 1, 200;
-  //     stroke-dashoffset: 0;
-  //   }
-  //   50% {
-  //     stroke-dasharray: 100, 200;
-  //     stroke-dashoffset: -15;
-  //   }
-  //   100% {
-  //     stroke-dasharray: 100, 200;
-  //     stroke-dashoffset: -125;
-  //   }
-  // }
 }

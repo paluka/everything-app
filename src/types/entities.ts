@@ -13,10 +13,6 @@ export interface IUserProfile {
   createdAt: string;
   image: string;
 
-  //   id: string | undefined;
-  //   name: string | undefined;
-  //   email: string | undefined;
-  //   image: string | undefined;
   posts?: IPost[] | undefined;
   conversations?: IConversationParticipant[] | undefined;
   messages?: IConversationMessage[] | undefined;

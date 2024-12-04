@@ -1,7 +1,6 @@
 // "use client";
 
 import type { Metadata } from "next";
-// import { SessionProvider } from "next-auth/react";
 
 import { getServerSession } from "next-auth";
 import localFont from "next/font/local";
