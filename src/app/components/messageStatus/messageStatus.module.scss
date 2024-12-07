@@ -1,0 +1,12 @@
+.messageStatus {
+  display: flex;
+  align-items: center;
+
+  .statusIcon {
+    display: inline-flex;
+
+    svg {
+      margin-left: 4px;
+    }
+  }
+}

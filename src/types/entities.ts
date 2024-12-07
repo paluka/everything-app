@@ -27,7 +27,7 @@ export interface IConversationParticipant {
   createdAt: string;
 }
 
-export enum MessageStatus {
+export enum MessageStatusEnum {
   SENT = "sent",
   DELIVERED = "delivered",
   READ = "read",
@@ -39,7 +39,7 @@ export interface IConversationMessage {
   conversationId: string;
   senderId: string;
   content: string;
-  status: MessageStatus;
+  status: MessageStatusEnum;
   conversation: IConversation;
   sender: IUserProfile;
   createdAt: string;

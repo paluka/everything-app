@@ -11,11 +11,12 @@ import messagesStyles from "./messages.module.scss";
 import {
   IConversation,
   IConversationMessage,
-  MessageStatus,
+  MessageStatusEnum,
 } from "@/types/entities";
 import { formatDate } from "@/utils/formatDate";
 import { getSocket } from "../../utils/socket";
 import { countUnreadMessages } from "@/utils/countUnreadMessages";
+import MessageStatus from "../components/messageStatus";
 
 const CONTEXT_MENU_HEIGHT = 40;
 const NEW_CONVERSATION_TEXT = "New Conversation";
@@ -104,7 +105,7 @@ function Messages() {
   const updateMessageStatus = useCallback(
     function (
       newMessage: IConversationMessage,
-      newMessageStatus: MessageStatus
+      newMessageStatus: MessageStatusEnum
     ) {
       console.log("Removing new message from conversation state");
 
@@ -121,8 +122,19 @@ function Messages() {
         setOpenConversation((prevConversation) => ({
           ...prevConversation!,
           messages: [
-            ...prevConversation!.messages.slice(0, -1),
-            editedNewMessage,
+            ...prevConversation!.messages.map((messageItem) => {
+              if (messageItem.id === newMessage.id) {
+                return editedNewMessage;
+              } else if (
+                !messageItem.id &&
+                messageItem.content === newMessage.content &&
+                messageItem.createdAt == newMessage.createdAt &&
+                messageItem.senderId == newMessage.senderId
+              ) {
+                return editedNewMessage;
+              }
+              return messageItem;
+            }),
           ] as IConversationMessage[],
         }));
       }
@@ -133,8 +145,19 @@ function Messages() {
             return {
               ...conversationItem,
               messages: [
-                ...conversationItem!.messages.slice(0, -1),
-                editedNewMessage,
+                ...conversationItem!.messages.map((messageItem) => {
+                  if (messageItem.id === newMessage.id) {
+                    return editedNewMessage;
+                  } else if (
+                    !messageItem.id &&
+                    messageItem.content === newMessage.content &&
+                    messageItem.createdAt == newMessage.createdAt &&
+                    messageItem.senderId == newMessage.senderId
+                  ) {
+                    return editedNewMessage;
+                  }
+                  return messageItem;
+                }),
               ] as IConversationMessage[],
             };
           }
@@ -165,10 +188,10 @@ function Messages() {
 
               if (
                 messageItem.senderId != userIdString &&
-                (messageItem.status === MessageStatus.DELIVERED ||
-                  messageItem.status === MessageStatus.SENT)
+                (messageItem.status === MessageStatusEnum.DELIVERED ||
+                  messageItem.status === MessageStatusEnum.SENT)
               ) {
-                newStatus = MessageStatus.READ;
+                newStatus = MessageStatusEnum.READ;
                 messageItem.status = newStatus;
 
                 // console.log("emitting status updates");
@@ -241,7 +264,7 @@ function Messages() {
         conversation: {
           id: conversation.id,
         },
-        createdAt: new Date().toString(),
+        createdAt: new Date().toISOString(),
       } as IConversationMessage;
 
       console.log("Sending message over WebSockets:", webSocketMessage);
@@ -268,7 +291,7 @@ function Messages() {
 
     socket.emit("sendMessage", newMessage);
 
-    updateMessageStatus(newMessage, MessageStatus.SENT);
+    updateMessageStatus(newMessage, MessageStatusEnum.SENT);
   }
 
   useEffect(() => {
@@ -380,12 +403,12 @@ function Messages() {
       // );
 
       if (newMessage.conversationId === lastOpenConversationId) {
-        newMessage.status = MessageStatus.READ;
+        newMessage.status = MessageStatusEnum.READ;
 
         socket.emit("statusUpdate", {
           conversation: openConversation,
           message: newMessage,
-          newStatus: MessageStatus.READ,
+          newStatus: MessageStatusEnum.READ,
         });
       }
       addNewMessageToConversationsState(newMessage);
@@ -394,7 +417,7 @@ function Messages() {
     socket.on(
       "messageStatusUpdate",
       (response: {
-        status: MessageStatus;
+        status: MessageStatusEnum;
         error: any;
         message: IConversationMessage;
       }) => {
@@ -545,132 +568,73 @@ function Messages() {
               className={messagesStyles.conversationMessages}
             >
               {openConversation?.messages?.length
-                ? openConversation.messages.map((message, index) => (
-                    <div
-                      key={index}
-                      className={`${messagesStyles.messageContainerSlot} ${
-                        message.senderId === userIdString
-                          ? messagesStyles.messageContainerSlotSender
-                          : messagesStyles.messageContainerSlotReceiver
-                      }`}
-                    >
+                ? openConversation.messages.map(
+                    (message: IConversationMessage, index: number) => (
                       <div
-                        className={`${messagesStyles.messageContainer} ${
+                        key={index}
+                        className={`${messagesStyles.messageContainerSlot} ${
                           message.senderId === userIdString
-                            ? messagesStyles.messageContainerSender
-                            : messagesStyles.messageContainerReceiver
+                            ? messagesStyles.messageContainerSlotSender
+                            : messagesStyles.messageContainerSlotReceiver
                         }`}
-                        onContextMenu={(e) => {
-                          if (
-                            message.senderId === userIdString &&
-                            message.status === MessageStatus.FAILED
-                          ) {
-                            e.preventDefault();
-                            // Get the bounding rectangle of the message container
-                            const rect =
-                              e.currentTarget.getBoundingClientRect();
-
-                            setContextMenu({
-                              x: e.pageX,
-                              y: rect.top + CONTEXT_MENU_HEIGHT,
-                              message: message,
-                            });
-                          }
-                        }}
                       >
                         <div
-                          className={messagesStyles.messageContent}
-                          style={{
-                            textAlign:
-                              message.senderId === userIdString
-                                ? "right"
-                                : "unset",
+                          className={`${messagesStyles.messageContainer} ${
+                            message.senderId === userIdString
+                              ? messagesStyles.messageContainerSender
+                              : messagesStyles.messageContainerReceiver
+                          }`}
+                          onContextMenu={(e) => {
+                            if (
+                              message.senderId === userIdString &&
+                              message.status === MessageStatusEnum.FAILED
+                            ) {
+                              e.preventDefault();
+                              // Get the bounding rectangle of the message container
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+
+                              setContextMenu({
+                                x: e.pageX,
+                                y: rect.top + CONTEXT_MENU_HEIGHT,
+                                message: message,
+                              });
+                            }
                           }}
                         >
-                          {message.content}
-                        </div>
-                        <div className={messagesStyles.messageSender}>
-                          <Image
-                            className={messagesStyles.profileImage}
-                            src={message.sender.image}
-                            alt="Profile Image"
-                            width={15}
-                            height={15}
-                          />
-                          {message.sender.name}
-                        </div>
+                          <div
+                            className={messagesStyles.messageContent}
+                            style={{
+                              textAlign:
+                                message.senderId === userIdString
+                                  ? "right"
+                                  : "unset",
+                            }}
+                          >
+                            {message.content}
+                          </div>
+                          <div className={messagesStyles.messageSender}>
+                            <Image
+                              className={messagesStyles.profileImage}
+                              src={message.sender.image}
+                              alt="Profile Image"
+                              width={15}
+                              height={15}
+                            />
+                            {message.sender.name}
+                          </div>
 
-                        <div className={messagesStyles.messageStatusDate}>
-                          {`${formatDate(message.createdAt)}`}
+                          <div className={messagesStyles.messageStatusDate}>
+                            {`${formatDate(message.createdAt)}`}
 
-                          {message.senderId === userIdString && (
-                            <div className={messagesStyles.messageStatus}>
-                              {message.status === MessageStatus.FAILED && (
-                                <div
-                                  className={messagesStyles.statusIcon}
-                                  title="Failed to send"
-                                >
-                                  <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="red"
-                                  >
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-                                  </svg>
-                                </div>
-                              )}
-                              {message.status === MessageStatus.SENT && (
-                                <div
-                                  className={messagesStyles.statusIcon}
-                                  title="Sent"
-                                >
-                                  <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="#999"
-                                  >
-                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                                  </svg>
-                                </div>
-                              )}
-                              {message.status === MessageStatus.DELIVERED && (
-                                <div
-                                  className={messagesStyles.statusIcon}
-                                  title="Delivered"
-                                >
-                                  <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="#0088ff"
-                                  >
-                                    <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
-                                  </svg>
-                                </div>
-                              )}
-                              {message.status === MessageStatus.READ && (
-                                <div
-                                  className={messagesStyles.statusIcon}
-                                  title="Read"
-                                >
-                                  <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="#4CAF50"
-                                  >
-                                    <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z" />
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                            {message.senderId === userIdString && (
+                              <MessageStatus message={message} />
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  )
                 : "Send your first message!"}
             </div>
 

@@ -1,4 +1,4 @@
-import { IConversationMessage, MessageStatus } from "@/types/entities";
+import { IConversationMessage, MessageStatusEnum } from "@/types/entities";
 
 export const countUnreadMessages = (
   messages: IConversationMessage[],
@@ -14,8 +14,8 @@ export const countUnreadMessages = (
 
   const unreadCount = messages.filter(
     (message) =>
-      message.status !== MessageStatus.READ &&
-      message.status !== MessageStatus.FAILED &&
+      message.status !== MessageStatusEnum.READ &&
+      message.status !== MessageStatusEnum.FAILED &&
       message.senderId !== userId
   ).length;
 
