@@ -24,6 +24,21 @@ model User {
   posts Post[]
   conversations Participant[]
   messages     Message[]
+
+  followers     Follow[] @relation("followingRelation")
+  following     Follow[] @relation("followerRelation")
+}
+
+model Follow {
+  id           String   @id @default(cuid())
+  followerId   String
+  followingId  String
+  createdAt    DateTime @default(now())
+
+  follower     User     @relation("followerRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  following    User     @relation("followingRelation", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId]) // Ensure a user can't follow the same person multiple times
 }
 
 model Post {

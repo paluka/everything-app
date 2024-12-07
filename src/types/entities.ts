@@ -16,6 +16,9 @@ export interface IUserProfile {
   posts?: IPost[] | undefined;
   conversations?: IConversationParticipant[] | undefined;
   messages?: IConversationMessage[] | undefined;
+
+  following?: IUserProfile[];
+  followers?: IUserProfile[];
 }
 
 export interface IConversationParticipant {
