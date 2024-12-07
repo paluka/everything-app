@@ -16,6 +16,8 @@ import ProfileFeed from "../../components/profileFeed/";
 
 import profilesStyles from "./profiles.module.scss";
 import { IPost, IUserProfile } from "@/types/entities";
+import logger from "@/utils/logger";
+import { useSessionUserProfile } from "@/app/components/sessionProviderWrapper/SessionProviderWrapper";
 
 const ProfilePage = () => {
   const [userProfile, setUserProfile] = useState<IUserProfile | null>(null);
@@ -35,11 +37,24 @@ const ProfilePage = () => {
   } else {
     userIdString = userId;
   }
+  const userIsProfileOwner = session?.user?.id == userIdString;
 
-  console.log("User ID string:", userIdString);
+  logger.log("User ID string in profile page:", {
+    userIdString,
+    userIsProfileOwner,
+  });
+
+  const { sessionUserProfile } = useSessionUserProfile();
 
   useEffect(() => {
     async function fetchUserProfile() {
+      if (userIsProfileOwner) {
+        if (sessionUserProfile) {
+          setUserProfile(sessionUserProfile);
+        }
+        return;
+      }
+
       if (isLoading || !userIdString || userProfile) {
         return;
       }
@@ -55,27 +70,38 @@ const ProfilePage = () => {
         if (!response.ok) {
           throw new Error("Failed to fetch user profile");
         }
-        const data = await response.json();
-        setUserProfile(data);
+        const userProfileData = await response.json();
+        setUserProfile(userProfileData);
+        logger.log("User data:", userProfileData);
       } catch (error) {
         const errorString = `Failed to fetch profile: ${error}`;
         setError(errorString);
-        console.error(errorString);
+        logger.error(errorString);
       } finally {
         setIsLoading(false);
       }
     }
     fetchUserProfile();
-  }, [isLoading, userIdString, userProfile]);
-
-  console.log("User data:", userProfile);
-
-  const userIsProfileOwner = session?.user?.id == userIdString;
+  }, [
+    isLoading,
+    sessionUserProfile,
+    userIdString,
+    userIsProfileOwner,
+    userProfile,
+  ]);
 
   const messageUser = (id: string | undefined) => {
     if (id) {
       router.push(`/messages?userId=${id}`);
     }
+  };
+
+  const followUser = (id: string | undefined) => {
+    alert(`Need to implement this functionality. Follow user with id: ${id}`);
+  };
+
+  const unfollowUser = (id: string | undefined) => {
+    alert(`Need to implement this functionality. Unfollow user with id: ${id}`);
   };
 
   function addNewlyCreatedPost(post: Partial<IPost>) {
@@ -119,9 +145,26 @@ const ProfilePage = () => {
               Sign out
             </button>
           )) || (
-            <button onClick={() => messageUser(userProfile?.id)}>
-              Message
-            </button>
+            <>
+              {!session?.user.id ||
+              !userProfile ||
+              !sessionUserProfile?.following?.some(
+                (personToFollow: IUserProfile) =>
+                  personToFollow.id === userProfile.id
+              ) ? (
+                <button onClick={() => followUser(userProfile?.id)}>
+                  Follow
+                </button>
+              ) : (
+                <button onClick={() => unfollowUser(userProfile?.id)}>
+                  Unfollow
+                </button>
+              )}
+
+              <button onClick={() => messageUser(userProfile?.id)}>
+                Message
+              </button>
+            </>
           )}
 
           {userIsProfileOwner && (
