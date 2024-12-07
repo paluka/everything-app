@@ -9,6 +9,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  text-underline-offset: 4px;
+
+  &:hover {
+    text-decoration: none;
+    color: #ff5733;
+  }
+
+  &.active {
+    text-decoration: underline;
+  }
 }
 
 .navigation img {

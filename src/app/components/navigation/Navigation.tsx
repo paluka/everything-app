@@ -2,23 +2,54 @@
 
 import { Session } from "next-auth";
 
-import styles from "./navigation.module.scss";
+import navigationStyles from "./navigation.module.scss";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 
 function Navigation({ session }: { session: Session | null }) {
   const userId = session?.user.id ?? "";
+  const pathname = usePathname();
 
   return (
-    <nav className={styles.navigation}>
-      <a href="/">Home</a>
+    <nav className={navigationStyles.navigation}>
+      <Link
+        href="/"
+        className={pathname === "/" ? navigationStyles.active : ""}
+      >
+        Home
+      </Link>
+      <Link
+        href="/find-friends"
+        className={pathname === "/find-friends" ? navigationStyles.active : ""}
+      >
+        Find Friends
+      </Link>
 
       {userId ? (
         <>
-          <a href="/api/auth/signout">Sign out</a>
-          <a href={`/profiles/${userId}`}>Profile</a>
-          <a href={`/messages`}>Messages</a>
+          <Link href="/api/auth/signout">Sign out</Link>
+          <Link
+            href={`/profiles/${userId}`}
+            className={
+              pathname === `/profiles/${userId}` ? navigationStyles.active : ""
+            }
+          >
+            Profile
+          </Link>
+          <Link
+            href={`/messages`}
+            className={pathname === "/messages" ? navigationStyles.active : ""}
+          >
+            Messages
+          </Link>
         </>
       ) : (
-        <a href="/login">Sign in</a>
+        <Link
+          href="/login"
+          className={pathname === "/login" ? navigationStyles.active : ""}
+        >
+          Sign in
+        </Link>
       )}
     </nav>
   );
