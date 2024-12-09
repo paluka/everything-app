@@ -32,7 +32,8 @@ function Messages() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasFetched, setHasFetched] = useState<boolean>(false);
   const [conversationList, setConversationList] = useState<IConversation[]>([]);
-  const [openConversation, setOpenConversation] = useState<IConversation>();
+  const [openConversation, setOpenConversation] =
+    useState<IConversation | null>(null);
   const [lastOpenConversationId, setLastOpenConversationId] =
     useState<string>("");
 
@@ -79,10 +80,15 @@ function Messages() {
   const addNewMessageToConversationsState = useCallback(
     function (newMessage: IConversationMessage) {
       if (newMessage.conversationId === lastOpenConversationId) {
-        setOpenConversation((prevConversation) => ({
-          ...prevConversation!,
-          messages: [...prevConversation!.messages, newMessage],
-        }));
+        setOpenConversation((prevConversation: IConversation | null) => {
+          if (prevConversation) {
+            return {
+              ...prevConversation,
+              messages: [...prevConversation!.messages, newMessage],
+            };
+          }
+          return null;
+        });
       }
 
       setConversationList((prevList: IConversation[]) => {
@@ -119,24 +125,29 @@ function Messages() {
       };
 
       if (newMessage.conversationId === lastOpenConversationId) {
-        setOpenConversation((prevConversation) => ({
-          ...prevConversation!,
-          messages: [
-            ...prevConversation!.messages.map((messageItem) => {
-              if (messageItem.id === newMessage.id) {
-                return editedNewMessage;
-              } else if (
-                !messageItem.id &&
-                messageItem.content === newMessage.content &&
-                messageItem.createdAt == newMessage.createdAt &&
-                messageItem.senderId == newMessage.senderId
-              ) {
-                return editedNewMessage;
-              }
-              return messageItem;
-            }),
-          ] as IConversationMessage[],
-        }));
+        setOpenConversation((prevConversation: IConversation | null) => {
+          if (prevConversation) {
+            return {
+              ...prevConversation,
+              messages: [
+                ...prevConversation!.messages.map((messageItem) => {
+                  if (messageItem.id === newMessage.id) {
+                    return editedNewMessage;
+                  } else if (
+                    !messageItem.id &&
+                    messageItem.content === newMessage.content &&
+                    messageItem.createdAt == newMessage.createdAt &&
+                    messageItem.senderId == newMessage.senderId
+                  ) {
+                    return editedNewMessage;
+                  }
+                  return messageItem;
+                }),
+              ] as IConversationMessage[],
+            };
+          }
+          return null;
+        });
       }
 
       setConversationList((prevList: IConversation[]) => {
