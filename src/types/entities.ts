@@ -13,12 +13,22 @@ export interface IUserProfile {
   createdAt: string;
   image: string;
 
-  posts?: IPost[] | undefined;
-  conversations?: IConversationParticipant[] | undefined;
-  messages?: IConversationMessage[] | undefined;
+  posts: IPost[] | undefined;
+  conversations: IConversationParticipant[] | undefined;
+  messages: IConversationMessage[] | undefined;
 
-  following?: IUserProfile[];
-  followers?: IUserProfile[];
+  following: IFollow[];
+  followers: IFollow[];
+
+  followerCount: number;
+  followingCount: number;
+}
+
+export interface IFollow {
+  id: string;
+  createdAt: string;
+  following?: IUserProfile;
+  follower?: IUserProfile;
 }
 
 export interface IConversationParticipant {

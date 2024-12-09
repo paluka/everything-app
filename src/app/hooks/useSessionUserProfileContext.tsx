@@ -2,12 +2,20 @@
 
 import { IUserProfile } from "@/types/entities";
 import logger from "@/utils/logger";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  Dispatch,
+  SetStateAction,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Session } from "next-auth";
 
 interface SessionUserProfileContextType {
   sessionUserProfile: IUserProfile | null;
-  setSessionUserProfile: (sessionUserProfile: IUserProfile | null) => void;
+  setSessionUserProfile: Dispatch<SetStateAction<IUserProfile | null>>;
 }
 
 const SessionUserProfileContext = createContext<
@@ -63,7 +71,10 @@ export function SessionUserProfileProvider({
         }
         const userProfileData = await response.json();
         setSessionUserProfile(userProfileData);
-        logger.log("User data:", userProfileData);
+        logger.log(
+          "User data in session user profile context:",
+          userProfileData
+        );
       } catch (error) {
         const errorString = `Failed to fetch profile: ${error}`;
         // setError(errorString);

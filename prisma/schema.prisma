@@ -27,6 +27,9 @@ model User {
 
   followers     Follow[] @relation("followingRelation")
   following     Follow[] @relation("followerRelation")
+
+  followerCount  Int       @default(0)
+  followingCount Int       @default(0)
 }
 
 model Follow {
