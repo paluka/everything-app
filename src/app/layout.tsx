@@ -10,6 +10,7 @@ import layoutStyles from "./layout.module.scss";
 import Navigation from "./components/navigation/";
 import SessionProviderWrapper from "./components/sessionProviderWrapper";
 import { authOptions } from "./api/auth/[...nextauth]/route";
+import { SessionUserProfileProvider } from "./hooks/useSessionUserProfileContext";
 
 const geistSans = localFont({
   src: "../../public/fonts/GeistVF.woff",
@@ -45,7 +46,9 @@ export default async function RootLayout({
           <h1 className={layoutStyles.header}>Everything App</h1>
           <Navigation session={session} />
           <SessionProviderWrapper session={session}>
-            <main className={layoutStyles.main}>{children}</main>
+            <SessionUserProfileProvider session={session}>
+              <main className={layoutStyles.main}>{children}</main>
+            </SessionUserProfileProvider>
           </SessionProviderWrapper>
         </div>
       </body>

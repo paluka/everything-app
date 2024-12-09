@@ -4,7 +4,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -17,9 +17,10 @@ import ProfileFeed from "../../components/profileFeed/";
 import profilesStyles from "./profiles.module.scss";
 import { IPost, IUserProfile } from "@/types/entities";
 import logger from "@/utils/logger";
-import { useSessionUserProfile } from "@/app/components/sessionProviderWrapper/SessionProviderWrapper";
+import { useSessionUserProfileContext } from "@/app/hooks/useSessionUserProfileContext";
 
 const ProfilePage = () => {
+  const isFetchingRef = useRef(false);
   const [userProfile, setUserProfile] = useState<IUserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
@@ -39,12 +40,7 @@ const ProfilePage = () => {
   }
   const userIsProfileOwner = session?.user?.id == userIdString;
 
-  logger.log("User ID string in profile page:", {
-    userIdString,
-    userIsProfileOwner,
-  });
-
-  const { sessionUserProfile } = useSessionUserProfile();
+  const { sessionUserProfile } = useSessionUserProfileContext();
 
   useEffect(() => {
     async function fetchUserProfile() {
@@ -55,10 +51,11 @@ const ProfilePage = () => {
         return;
       }
 
-      if (isLoading || !userIdString || userProfile) {
+      if (isLoading || !userIdString || userProfile || isFetchingRef.current) {
         return;
       }
 
+      isFetchingRef.current = true;
       setIsLoading(true);
       setError("");
 
@@ -73,12 +70,17 @@ const ProfilePage = () => {
         const userProfileData = await response.json();
         setUserProfile(userProfileData);
         logger.log("User data:", userProfileData);
+        logger.log("User ID string in profile page:", {
+          userIdString,
+          userIsProfileOwner,
+        });
       } catch (error) {
         const errorString = `Failed to fetch profile: ${error}`;
         setError(errorString);
         logger.error(errorString);
       } finally {
         setIsLoading(false);
+        isFetchingRef.current = false;
       }
     }
     fetchUserProfile();
