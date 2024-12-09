@@ -65,7 +65,7 @@ function FindFriends() {
           hasFetchedRef.current &&
           users.map((userProfile: IUserProfile, index: number) => {
             if (session?.user.id === userProfile.id) {
-              return <></>;
+              return;
             }
 
             return (

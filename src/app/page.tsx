@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
@@ -8,6 +8,7 @@ import Post from "./components/post";
 import { IPost } from "@/types/entities";
 import { useSession } from "next-auth/react";
 import { useDeletePost } from "./hooks/useDeletePost";
+import logger from "@/utils/logger";
 
 export default function Home() {
   const [postsData, setPostsData] = useState<{
@@ -17,6 +18,7 @@ export default function Home() {
     posts: [],
     paginated: false,
   });
+  const isFetchingRef = useRef(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasFetched, setHasFetched] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
@@ -61,10 +63,11 @@ export default function Home() {
 
   const memoizedFetchPosts = useCallback(
     async function fetchPosts() {
-      if (isLoading || !hasMore) {
+      if (isLoading || !hasMore || isFetchingRef.current) {
         return;
       }
 
+      isFetchingRef.current = true;
       setError("");
       setIsLoading(true);
 
@@ -80,10 +83,10 @@ export default function Home() {
           throw new Error("Failed to fetch posts");
         }
 
-        const data = await response.json();
+        const newPostsData = await response.json();
 
         setPostsData((prevData) => {
-          const newPosts = data.posts.filter(
+          const newPosts = newPostsData.posts.filter(
             (newPost) =>
               !prevData.posts.some(
                 (existingPost) => existingPost.id === newPost.id
@@ -92,18 +95,21 @@ export default function Home() {
 
           return {
             posts: [...prevData.posts, ...newPosts],
-            paginated: data.paginated,
+            paginated: newPostsData.paginated,
           };
         });
 
-        setCursor(data.nextCursor); // Update the cursor
-        setHasMore(data.hasMore); // Check if there are more posts
+        setCursor(newPostsData.nextCursor); // Update the cursor
+        setHasMore(newPostsData.hasMore); // Check if there are more posts
         setHasFetched(true);
+
+        logger.log("New posts data:", newPostsData);
       } catch (error) {
         setError(`Post fetching error: ${error}`);
         console.error("Post fetching error", error);
       } finally {
         setIsLoading(false);
+        isFetchingRef.current = false;
       }
     },
     [cursor, hasMore, isLoading]
@@ -126,8 +132,6 @@ export default function Home() {
       };
     }
   }, [contextMenu]);
-
-  console.log("Posts data:", postsData);
 
   return (
     <div>
