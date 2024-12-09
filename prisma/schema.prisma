@@ -2,11 +2,11 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
- 
+
 generator client {
   provider = "prisma-client-js"
 }
- 
+
 model User {
   id            String          @id @default(cuid())
   name          String?
@@ -17,32 +17,32 @@ model User {
   sessions      Session[]
   // Optional for WebAuthn support
   Authenticator Authenticator[]
- 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  posts Post[]
+  posts         Post[]
   conversations Participant[]
-  messages     Message[]
+  messages      Message[]
 
-  followers     Follow[] @relation("followingRelation")
-  following     Follow[] @relation("followerRelation")
+  followers Follow[] @relation("followingRelation")
+  following Follow[] @relation("followerRelation")
 
-  followerCount  Int       @default(0)
-  followingCount Int       @default(0)
+  followerCount  Int @default(0)
+  followingCount Int @default(0)
 
-  publicKey String?
+  publicKey           String?
   encryptedPrivateKey String?
 }
 
 model Follow {
-  id           String   @id @default(cuid())
-  followerId   String
-  followingId  String
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
 
-  follower     User     @relation("followerRelation", fields: [followerId], references: [id], onDelete: Cascade)
-  following    User     @relation("followingRelation", fields: [followingId], references: [id], onDelete: Cascade)
+  follower  User @relation("followerRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("followingRelation", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId]) // Ensure a user can't follow the same person multiple times
 }
@@ -58,21 +58,21 @@ model Post {
 }
 
 model Conversation {
-  id          String   @id @default(cuid())
+  id           String        @id @default(cuid())
   participants Participant[]
   messages     Message[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Participant {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
   userId         String
-  conversation   Conversation  @relation(fields: [conversationId], references: [id])
-  user           User          @relation(fields: [userId], references: [id])
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 enum MessageStatus {
@@ -83,18 +83,18 @@ enum MessageStatus {
 }
 
 model Message {
-  id             String   @id @default(cuid())
-  conversationId String
-  senderId       String
-  content        String
-  status    MessageStatus @default(sent)
-  conversation   Conversation  @relation(fields: [conversationId], references: [id])
-  sender         User          @relation(fields: [senderId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id                          String        @id @default(cuid())
+  conversationId              String
+  senderId                    String
+  encryptedContentForSender   String
+  encryptedContentForReceiver String
+  status                      MessageStatus @default(sent)
+  conversation                Conversation  @relation(fields: [conversationId], references: [id])
+  sender                      User          @relation(fields: [senderId], references: [id])
+  createdAt                   DateTime      @default(now())
+  updatedAt                   DateTime      @updatedAt
 }
 
- 
 model Account {
   userId            String
   type              String
@@ -107,33 +107,33 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
- 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
- 
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   @@id([provider, providerAccountId])
 }
- 
+
 model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
- 
+
 model VerificationToken {
   identifier String
   token      String
   expires    DateTime
- 
+
   @@id([identifier, token])
 }
- 
+
 // Optional for WebAuthn support
 model Authenticator {
   credentialID         String  @unique
@@ -144,8 +144,8 @@ model Authenticator {
   credentialDeviceType String
   credentialBackedUp   Boolean
   transports           String?
- 
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   @@id([userId, credentialID])
 }
