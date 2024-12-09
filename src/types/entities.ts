@@ -22,6 +22,9 @@ export interface IUserProfile {
 
   followerCount: number;
   followingCount: number;
+
+  publicKey?: string;
+  encryptedPrivateKey?: string;
 }
 
 export interface IFollow {

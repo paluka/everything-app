@@ -11,15 +11,17 @@ import messagesStyles from "./messages.module.scss";
 import {
   IConversation,
   IConversationMessage,
+  IConversationParticipant,
+  IUserProfile,
   MessageStatusEnum,
 } from "@/types/entities";
 import { formatDate } from "@/utils/formatDate";
 import { getSocket } from "../../utils/socket";
 import { countUnreadMessages } from "@/utils/countUnreadMessages";
 import MessageStatus from "../components/messageStatus";
+import { encryptMessage } from "@/utils/encryptMessage";
 
 const CONTEXT_MENU_HEIGHT = 40;
-const NEW_CONVERSATION_TEXT = "New Conversation";
 
 function Messages() {
   const [contextMenu, setContextMenu] = useState<{
@@ -36,6 +38,8 @@ function Messages() {
     useState<IConversation | null>(null);
   const [lastOpenConversationId, setLastOpenConversationId] =
     useState<string>("");
+  const [messageReceiverUserProfile, setMessageReceiverUserProfile] =
+    useState<IUserProfile | null>(null);
 
   const [textContent, setTextContent] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -52,6 +56,14 @@ function Messages() {
 
   const searchParams = useSearchParams();
   const messageReceiverUserId = searchParams.get("userId");
+
+  useEffect(() => {
+    async function getMessageReceiverUserProfile() {}
+
+    if (messageReceiverUserId) {
+      getMessageReceiverUserProfile();
+    }
+  }, [messageReceiverUserId]);
 
   // Close the context menu when left clicking outside of it
   useEffect(() => {
@@ -256,7 +268,9 @@ function Messages() {
       isLoading ||
       error ||
       !textContent ||
-      !openConversation
+      !openConversation ||
+      !messageReceiverUserProfile ||
+      !messageReceiverUserProfile.publicKey
     ) {
       return;
     }
@@ -265,12 +279,17 @@ function Messages() {
       setError("");
       setIsLoading(true);
 
+      const publicKeyEncryptedMessage = await encryptMessage(
+        messageReceiverUserProfile.publicKey,
+        textContent
+      );
+
       const socket = getSocket(userIdString);
 
       const webSocketMessage = {
         conversationId: conversation.id,
         senderId: userIdString,
-        content: textContent,
+        content: publicKeyEncryptedMessage,
         sender: session?.user,
         conversation: {
           id: conversation.id,
@@ -328,22 +347,29 @@ function Messages() {
         const conversationDataList = await response.json();
 
         if (messageReceiverUserId) {
-          let hasFound = false;
+          let hasFoundMessageReceiverConversation = false;
 
           if (conversationDataList.length) {
-            hasFound = conversationDataList.some((conversationData) =>
-              conversationData.participants.some(
-                (participantItem) =>
-                  participantItem.userId === messageReceiverUserId
-              )
+            hasFoundMessageReceiverConversation = conversationDataList.some(
+              (conversationData) =>
+                conversationData.participants.some((participantItem) => {
+                  if (participantItem.userId === messageReceiverUserId) {
+                    setMessageReceiverUserProfile(participantItem.user);
+                    return true;
+                  }
+                  return false;
+                })
             );
           }
 
-          console.log(`HAS FOUND MESSAGE RECEIVER CONVERSATION: ${hasFound}`, {
-            conversationDataList,
-          });
+          console.log(
+            `HAS FOUND MESSAGE RECEIVER CONVERSATION: ${hasFoundMessageReceiverConversation}`,
+            {
+              conversationDataList,
+            }
+          );
 
-          if (!hasFound) {
+          if (!hasFoundMessageReceiverConversation) {
             const responseCreate = await fetch(
               `${process.env.NEXT_PUBLIC_BACKEND_URL}/conversations`,
               {
@@ -368,6 +394,16 @@ function Messages() {
             const createdConversation = await responseCreate.json();
 
             console.log("CREATED CONVERSATION:", { createdConversation });
+
+            createdConversation.participants.some(
+              (participantItem: IConversationParticipant) => {
+                if (participantItem.user.id === messageReceiverUserId) {
+                  setMessageReceiverUserProfile(participantItem.user);
+                  return true;
+                }
+                return false;
+              }
+            );
 
             setConversationList([...conversationDataList, createdConversation]);
             handleOpenConversation(createdConversation);
@@ -548,7 +584,7 @@ function Messages() {
                         key={participantItem.id}
                         onClick={() => handleOpenConversation(conversationData)}
                       >
-                        {participantItem.user.name || NEW_CONVERSATION_TEXT}
+                        {participantItem.user.name}
                         {/* {console.log({
                           lastOpenConversationId,
                           cid: conversationData.id,
