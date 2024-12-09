@@ -116,6 +116,9 @@
           .messageContent {
             font-size: 1.1rem;
             margin-bottom: 4px;
+
+            max-width: 400px;
+            word-wrap: break-word;
           }
 
           .messageSender {
