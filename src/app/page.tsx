@@ -9,7 +9,6 @@ import { IPost } from "@/types/entities";
 import { useSession } from "next-auth/react";
 import { useDeletePost } from "./hooks/useDeletePost";
 import logger from "@/utils/logger";
-import PasswordPrompt from "./components/passwordPrompt";
 
 export default function Home() {
   const [postsData, setPostsData] = useState<{
@@ -169,8 +168,6 @@ export default function Home() {
             {isLoading ? "Loading..." : "Load More"}
           </button>
         )}
-
-        <PasswordPrompt />
       </SkeletonTheme>
     </div>
   );

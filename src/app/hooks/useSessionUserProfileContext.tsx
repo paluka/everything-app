@@ -58,6 +58,9 @@ export function SessionUserProfileProvider({
         sessionUserProfile ||
         hasFetchedRef.current
       ) {
+        if (!sessionUserProfile?.secret) {
+          setIsPasswordPromptVisible(true);
+        }
         return;
       }
 

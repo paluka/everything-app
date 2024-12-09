@@ -11,6 +11,7 @@ import Navigation from "./components/navigation/";
 import SessionProviderWrapper from "./components/sessionProviderWrapper";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import { SessionUserProfileProvider } from "./hooks/useSessionUserProfileContext";
+import PasswordPrompt from "./components/passwordPrompt";
 
 const geistSans = localFont({
   src: "../../public/fonts/GeistVF.woff",
@@ -47,6 +48,7 @@ export default async function RootLayout({
           <Navigation session={session} />
           <SessionProviderWrapper session={session}>
             <SessionUserProfileProvider session={session}>
+              <PasswordPrompt />
               <main className={layoutStyles.main}>{children}</main>
             </SessionUserProfileProvider>
           </SessionProviderWrapper>

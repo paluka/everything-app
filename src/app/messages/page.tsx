@@ -19,7 +19,11 @@ import { formatDate } from "@/utils/formatDate";
 import { getSocket } from "../../utils/socket";
 import { countUnreadMessages } from "@/utils/countUnreadMessages";
 import MessageStatus from "../components/messageStatus";
-import { encryptMessage } from "@/utils/encryptMessage";
+import { encryptMessage } from "@/utils/crypto/encryptMessage";
+import { useSessionUserProfileContext } from "../hooks/useSessionUserProfileContext";
+import { decryptPrivateKey } from "@/utils/crypto/decryptPrivateKey";
+import { decryptMessage } from "@/utils/crypto/decryptMessage";
+import logger from "@/utils/logger";
 
 const CONTEXT_MENU_HEIGHT = 40;
 
@@ -57,6 +61,8 @@ function Messages() {
   const searchParams = useSearchParams();
   const messageReceiverUserId = searchParams.get("userId");
 
+  const { sessionUserProfile } = useSessionUserProfileContext();
+
   useEffect(() => {
     async function getMessageReceiverUserProfile() {}
 
@@ -90,7 +96,31 @@ function Messages() {
   }, [openConversation?.messages]);
 
   const addNewMessageToConversationsState = useCallback(
-    function (newMessage: IConversationMessage) {
+    async function (newMessage: IConversationMessage) {
+      if (
+        !sessionUserProfile ||
+        !sessionUserProfile.encryptedPrivateKey ||
+        !sessionUserProfile.secret
+      ) {
+        logger.error("Unable to add new sent messages", { sessionUserProfile });
+        return;
+      }
+      const decryptedPrivateKey = await decryptPrivateKey(
+        sessionUserProfile.encryptedPrivateKey,
+        sessionUserProfile.secret
+      );
+
+      const decryptedMessageContent = await decryptMessage(
+        newMessage.senderId == sessionUserProfile.id
+          ? newMessage.encryptedContentForSender
+          : newMessage.encryptedContentForReceiver,
+        decryptedPrivateKey
+      );
+
+      logger.log(`Decrypted message content`, decryptedMessageContent);
+
+      newMessage.decryptedContent = decryptedMessageContent;
+
       if (newMessage.conversationId === lastOpenConversationId) {
         setOpenConversation((prevConversation: IConversation | null) => {
           if (prevConversation) {
@@ -117,7 +147,7 @@ function Messages() {
         return updatedList;
       });
     },
-    [lastOpenConversationId]
+    [lastOpenConversationId, sessionUserProfile]
   );
 
   const updateMessageStatus = useCallback(
@@ -125,16 +155,16 @@ function Messages() {
       newMessage: IConversationMessage,
       newMessageStatus: MessageStatusEnum
     ) {
-      console.log("Removing new message from conversation state");
+      logger.log("Updating message status", newMessageStatus);
 
       if (!openConversation || !conversationList.length) {
         return;
       }
 
-      const editedNewMessage = {
-        ...newMessage,
-        status: newMessageStatus,
-      };
+      // const editedNewMessage = {
+      //   ...newMessage,
+      //   status: newMessageStatus,
+      // };
 
       if (newMessage.conversationId === lastOpenConversationId) {
         setOpenConversation((prevConversation: IConversation | null) => {
@@ -144,14 +174,23 @@ function Messages() {
               messages: [
                 ...prevConversation!.messages.map((messageItem) => {
                   if (messageItem.id === newMessage.id) {
-                    return editedNewMessage;
+                    return {
+                      ...newMessage,
+                      status: newMessageStatus,
+                      decryptedContent: messageItem.decryptedContent,
+                    };
                   } else if (
                     !messageItem.id &&
-                    messageItem.content === newMessage.content &&
+                    messageItem.encryptedContentForReceiver ===
+                      newMessage.encryptedContentForReceiver &&
                     messageItem.createdAt == newMessage.createdAt &&
                     messageItem.senderId == newMessage.senderId
                   ) {
-                    return editedNewMessage;
+                    return {
+                      ...newMessage,
+                      status: newMessageStatus,
+                      decryptedContent: messageItem.decryptedContent,
+                    };
                   }
                   return messageItem;
                 }),
@@ -170,14 +209,23 @@ function Messages() {
               messages: [
                 ...conversationItem!.messages.map((messageItem) => {
                   if (messageItem.id === newMessage.id) {
-                    return editedNewMessage;
+                    return {
+                      ...newMessage,
+                      status: newMessageStatus,
+                      decryptedContent: messageItem.decryptedContent,
+                    };
                   } else if (
                     !messageItem.id &&
-                    messageItem.content === newMessage.content &&
+                    messageItem.encryptedContentForReceiver ===
+                      newMessage.encryptedContentForReceiver &&
                     messageItem.createdAt == newMessage.createdAt &&
                     messageItem.senderId == newMessage.senderId
                   ) {
-                    return editedNewMessage;
+                    return {
+                      ...newMessage,
+                      status: newMessageStatus,
+                      decryptedContent: messageItem.decryptedContent,
+                    };
                   }
                   return messageItem;
                 }),
@@ -202,12 +250,12 @@ function Messages() {
     setConversationList((prevList: IConversation[]) => {
       const updatedList = prevList.map((conversationItem: IConversation) => {
         if (conversationItem.id === conversation.id) {
-          // console.log({ messages: conversationItem.messages });
+          // logger.log({ messages: conversationItem.messages });
 
           const newMessagesList = conversationItem.messages?.map(
             (messageItem) => {
               let newStatus = messageItem.status;
-              // console.log("Inside", { messageItem, userIdString });
+              // logger.log("Inside", { messageItem, userIdString });
 
               if (
                 messageItem.senderId != userIdString &&
@@ -217,7 +265,7 @@ function Messages() {
                 newStatus = MessageStatusEnum.READ;
                 messageItem.status = newStatus;
 
-                // console.log("emitting status updates");
+                // logger.log("emitting status updates");
                 socket.emit("statusUpdate", {
                   conversation,
                   message: messageItem,
@@ -253,13 +301,32 @@ function Messages() {
         return;
       }
 
+      const messageReceiver = conversation.participants.filter(
+        (participantItem) => participantItem.userId != sessionUserProfile?.id
+      );
+
+      if (messageReceiver.length > 0) {
+        setMessageReceiverUserProfile(messageReceiver[0].user);
+      }
+
       emitMessageStatusToRead(conversation, userIdString);
+      // TODO
+      // conversation.messages.forEach((messageItem) => {
+      //   if (messageItem.senderId == sessionUserProfile?.id) {
+      //     messageItem.decryptedContent =
+      //   }
+      // })
       setOpenConversation(conversation);
       setLastOpenConversationId(conversation.id);
 
-      console.log("Open conversation", { conversation });
+      logger.log("Open conversation", { conversation });
     },
-    [lastOpenConversationId, emitMessageStatusToRead, userIdString]
+    [
+      userIdString,
+      lastOpenConversationId,
+      emitMessageStatusToRead,
+      sessionUserProfile?.id,
+    ]
   );
 
   async function handleSendMessage(conversation: IConversation) {
@@ -270,8 +337,21 @@ function Messages() {
       !textContent ||
       !openConversation ||
       !messageReceiverUserProfile ||
-      !messageReceiverUserProfile.publicKey
+      !messageReceiverUserProfile.publicKey ||
+      !sessionUserProfile ||
+      !sessionUserProfile.publicKey
     ) {
+      logger.error("Unable to send messages", {
+        userIdString,
+        isLoading,
+        error,
+        textContent,
+        openConversation,
+        messageReceiverUserProfile,
+        receiverPublicKey: messageReceiverUserProfile?.publicKey,
+        sessionUserProfile,
+        senderPublicKey: sessionUserProfile?.publicKey,
+      });
       return;
     }
 
@@ -279,8 +359,13 @@ function Messages() {
       setError("");
       setIsLoading(true);
 
-      const publicKeyEncryptedMessage = await encryptMessage(
+      const encryptedContentForReceiver = await encryptMessage(
         messageReceiverUserProfile.publicKey,
+        textContent
+      );
+
+      const encryptedContentForSender = await encryptMessage(
+        sessionUserProfile.publicKey,
         textContent
       );
 
@@ -289,7 +374,8 @@ function Messages() {
       const webSocketMessage = {
         conversationId: conversation.id,
         senderId: userIdString,
-        content: publicKeyEncryptedMessage,
+        encryptedContentForReceiver,
+        encryptedContentForSender,
         sender: session?.user,
         conversation: {
           id: conversation.id,
@@ -297,7 +383,7 @@ function Messages() {
         createdAt: new Date().toISOString(),
       } as IConversationMessage;
 
-      console.log("Sending message over WebSockets:", webSocketMessage);
+      logger.log("Sending message over WebSockets:", webSocketMessage);
       socket.emit("sendMessage", webSocketMessage);
 
       setTextContent("");
@@ -305,7 +391,7 @@ function Messages() {
     } catch (error) {
       const errorString = `Send message error: ${error}`;
       setError(errorString);
-      console.error(errorString);
+      logger.error(errorString);
     } finally {
       setIsLoading(false);
     }
@@ -315,7 +401,7 @@ function Messages() {
     if (!userIdString || !openConversation) return;
 
     const socket = getSocket(userIdString);
-    console.log("Retrying failed message:", message);
+    logger.log("Retrying failed message:", message);
 
     const newMessage = { ...message, createdAt: new Date().toString() };
 
@@ -362,7 +448,7 @@ function Messages() {
             );
           }
 
-          console.log(
+          logger.log(
             `HAS FOUND MESSAGE RECEIVER CONVERSATION: ${hasFoundMessageReceiverConversation}`,
             {
               conversationDataList,
@@ -393,7 +479,7 @@ function Messages() {
 
             const createdConversation = await responseCreate.json();
 
-            console.log("CREATED CONVERSATION:", { createdConversation });
+            logger.log("CREATED CONVERSATION:", { createdConversation });
 
             createdConversation.participants.some(
               (participantItem: IConversationParticipant) => {
@@ -415,7 +501,7 @@ function Messages() {
         }
       } catch (error) {
         const errorString = `Error fetching conversations for user ${userIdString}. Error: ${error}`;
-        console.error(errorString);
+        logger.error(errorString);
         setError(errorString);
       } finally {
         setIsLoading(false);
@@ -438,12 +524,12 @@ function Messages() {
     const socket = getSocket(userIdString);
 
     socket.on("connect", () => {
-      console.log("WebSocket connected:", socket.id);
+      logger.log("WebSocket connected:", socket.id);
     });
 
     socket.on("receiveMessage", (newMessage: IConversationMessage) => {
-      console.log("Received a new websocket message", { newMessage });
-      // console.log(
+      logger.log("Received a new websocket message", { newMessage });
+      // logger.log(
       //   newMessage.conversationId,
       //   lastOpenConversationId,
       //   newMessage.conversationId === lastOpenConversationId
@@ -468,14 +554,14 @@ function Messages() {
         error: any;
         message: IConversationMessage;
       }) => {
-        console.log("New WebSocket message status update:", response);
+        logger.log("New WebSocket message status update:", response);
 
         updateMessageStatus(response.message, response.status);
       }
     );
 
     socket.on("newMessageNotification", (message) => {
-      console.log(
+      logger.log(
         "New WebSocket message in conversation notification received:",
         { message }
 
@@ -585,7 +671,7 @@ function Messages() {
                         onClick={() => handleOpenConversation(conversationData)}
                       >
                         {participantItem.user.name}
-                        {/* {console.log({
+                        {/* {logger.log({
                           lastOpenConversationId,
                           cid: conversationData.id,
                           id: openConversation?.id,
@@ -658,7 +744,7 @@ function Messages() {
                                   : "unset",
                             }}
                           >
-                            {message.content}
+                            {message.decryptedContent}
                           </div>
                           <div className={messagesStyles.messageSender}>
                             <Image

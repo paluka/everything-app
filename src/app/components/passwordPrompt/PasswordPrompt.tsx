@@ -1,10 +1,12 @@
+"use client";
+
 import { useRef, useState } from "react";
-import * as CryptoJS from "crypto-js";
 
 import logger from "@/utils/logger";
 import { useSessionUserProfileContext } from "@/app/hooks/useSessionUserProfileContext";
 
 import passwordPromptStyles from "./passwordPrompt.module.scss";
+import { generateKeyPair } from "@/utils/crypto/generateKeyPair";
 
 function PasswordPrompt() {
   const hasFetchedRef = useRef(false);
@@ -18,46 +20,6 @@ function PasswordPrompt() {
     sessionUserProfile,
     setSessionUserProfile,
   } = useSessionUserProfileContext();
-
-  async function generateKeyPair(
-    secret: string
-  ): Promise<{ encryptedPrivateKey: string; publicKeyBase64: string }> {
-    const keyPair = await window.crypto.subtle.generateKey(
-      {
-        name: "RSA-OAEP",
-        modulusLength: 2048,
-        publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-        hash: { name: "SHA-256" },
-      },
-      true, // Can be used for encryption and decryption
-      ["encrypt", "decrypt"]
-    );
-
-    // Export keys
-    const privateKey = await window.crypto.subtle.exportKey(
-      "pkcs8",
-      keyPair.privateKey
-    );
-    const publicKey = await window.crypto.subtle.exportKey(
-      "spki",
-      keyPair.publicKey
-    );
-
-    // Convert keys to base64 for storage
-    const privateKeyBase64 = btoa(
-      String.fromCharCode(...new Uint8Array(privateKey))
-    );
-    const publicKeyBase64 = btoa(
-      String.fromCharCode(...new Uint8Array(publicKey))
-    );
-
-    const encryptedPrivateKey = CryptoJS.AES.encrypt(
-      privateKeyBase64,
-      secret
-    ).toString();
-
-    return { encryptedPrivateKey, publicKeyBase64 };
-  }
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -93,7 +55,7 @@ function PasswordPrompt() {
       }
 
       const newUserProfile = await response.json();
-      setSessionUserProfile(newUserProfile);
+      setSessionUserProfile({ ...newUserProfile, secret: passwordContent });
       // logger.log(`Response from updating user profile from prompt`, response);
       // const data = await response.json();
       // logger.log(`Create post response: ${JSON.stringify(data)}`);
@@ -145,7 +107,7 @@ function PasswordPrompt() {
             onClick={() => setShowPassword(!showPassword)}
             aria-label="Toggle password visibility"
           >
-            {showPassword ? (
+            {!showPassword ? (
               // Open eye icon (SVG)
               <svg
                 xmlns="http://www.w3.org/2000/svg"

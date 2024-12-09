@@ -25,6 +25,7 @@ export interface IUserProfile {
 
   publicKey?: string;
   encryptedPrivateKey?: string;
+  secret?: string;
 }
 
 export interface IFollow {
@@ -54,11 +55,14 @@ export interface IConversationMessage {
   id: string;
   conversationId: string;
   senderId: string;
-  content: string;
   status: MessageStatusEnum;
   conversation: IConversation;
   sender: IUserProfile;
   createdAt: string;
+
+  encryptedContentForSender: string;
+  encryptedContentForReceiver: string;
+  decryptedContent?: string;
 }
 
 export interface IConversation {
