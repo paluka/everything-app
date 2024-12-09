@@ -631,6 +631,7 @@ function Messages() {
                               alt="Profile Image"
                               width={15}
                               height={15}
+                              priority={true}
                             />
                             {message.sender.name}
                           </div>

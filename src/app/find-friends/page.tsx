@@ -80,6 +80,7 @@ function FindFriends() {
                   width={40}
                   height={40}
                   alt={userProfile.name}
+                  priority={true}
                 />
 
                 <div className={findFriendsStyles.userName}>

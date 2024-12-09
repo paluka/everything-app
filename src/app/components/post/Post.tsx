@@ -57,6 +57,7 @@ function Post({
           width={40}
           height={40}
           alt={userProfile.name}
+          priority={true}
         />
         <div>
           <div className={postStyles.userName}>{userProfile.name}</div>
