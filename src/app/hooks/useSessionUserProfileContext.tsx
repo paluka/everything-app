@@ -16,6 +16,8 @@ import { Session } from "next-auth";
 interface SessionUserProfileContextType {
   sessionUserProfile: IUserProfile | null;
   setSessionUserProfile: Dispatch<SetStateAction<IUserProfile | null>>;
+  isPasswordPromptVisible: boolean;
+  setIsPasswordPromptVisible: Dispatch<SetStateAction<boolean>>;
 }
 
 const SessionUserProfileContext = createContext<
@@ -42,6 +44,8 @@ export function SessionUserProfileProvider({
 }) {
   const hasFetchedRef = useRef(false);
 
+  const [isPasswordPromptVisible, setIsPasswordPromptVisible] =
+    useState<boolean>(false);
   const [sessionUserProfile, setSessionUserProfile] =
     useState<IUserProfile | null>(null);
   // const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -75,6 +79,10 @@ export function SessionUserProfileProvider({
           "User data in session user profile context:",
           userProfileData
         );
+
+        if (!userProfileData.publicKey) {
+          setIsPasswordPromptVisible(true);
+        }
       } catch (error) {
         const errorString = `Failed to fetch profile: ${error}`;
         // setError(errorString);
@@ -90,7 +98,12 @@ export function SessionUserProfileProvider({
 
   return (
     <SessionUserProfileContext.Provider
-      value={{ sessionUserProfile, setSessionUserProfile }}
+      value={{
+        sessionUserProfile,
+        setSessionUserProfile,
+        isPasswordPromptVisible,
+        setIsPasswordPromptVisible,
+      }}
     >
       {children}
     </SessionUserProfileContext.Provider>
