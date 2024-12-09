@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import createPostStyles from "./createPost.module.scss";
 import { IPost } from "@/types/entities";
+import logger from "@/utils/logger";
 
 function CreatePost({
   userId,
@@ -14,7 +15,9 @@ function CreatePost({
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
     if (isLoading) {
       return;
     }
@@ -39,14 +42,14 @@ function CreatePost({
         throw new Error("Failed to create the post");
       }
 
-      const data = await response.json();
-      console.log(`Create post response: ${JSON.stringify(data)}`);
+      const newPostData = await response.json();
+      logger.log(`Create post response:`, newPostData);
 
       addNewlyCreatedPost({
         content,
         userId,
-        id: data.id,
-        createdAt: data.createdAt,
+        id: newPostData.id,
+        createdAt: newPostData.createdAt,
       });
     } catch (error) {
       const errorString = `Post saving error: ${error}`;
@@ -59,14 +62,24 @@ function CreatePost({
   };
 
   return (
-    <div className={createPostStyles.createPost}>
-      <textarea value={content} onChange={(e) => setContent(e.target.value)} />
+    <form
+      className={createPostStyles.createPost}
+      onSubmit={(event) => {
+        handleSubmit(event);
+      }}
+    >
+      <input
+        type="text"
+        value={content}
+        placeholder="Create a post!"
+        onChange={(event) => setContent(event.target.value)}
+      />
 
       <button onClick={handleSubmit}>Post</button>
 
       {isLoading && <span>Loading...</span>}
       {error && <span>{error}</span>}
-    </div>
+    </form>
   );
 }
 

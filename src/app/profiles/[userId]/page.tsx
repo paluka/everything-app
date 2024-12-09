@@ -229,12 +229,31 @@ const ProfilePage = () => {
   };
 
   function addNewlyCreatedPost(post: Partial<IPost>) {
-    if (userProfile) {
-      setUserProfile({
-        ...userProfile,
-        posts: userProfile.posts
-          ? [post as IPost, ...userProfile.posts]
-          : [post as IPost],
+    if (userIsProfileOwner && userProfile) {
+      setUserProfile((prevUserProfile: IUserProfile | null) => {
+        if (prevUserProfile) {
+          return {
+            ...prevUserProfile,
+            posts: prevUserProfile.posts
+              ? [post as IPost, ...prevUserProfile.posts]
+              : [post as IPost],
+          };
+        }
+        return null;
+      });
+    }
+
+    if (sessionUserProfile) {
+      setSessionUserProfile((sessionUserProfile: IUserProfile | null) => {
+        if (sessionUserProfile) {
+          return {
+            ...sessionUserProfile,
+            posts: sessionUserProfile.posts
+              ? [post as IPost, ...sessionUserProfile.posts]
+              : [post as IPost],
+          };
+        }
+        return null;
       });
     }
   }
@@ -252,6 +271,7 @@ const ProfilePage = () => {
               alt="Profile Image"
               width={100}
               height={100}
+              priority={true}
             />
           )) || <Skeleton width={100} height={100} />}
 
