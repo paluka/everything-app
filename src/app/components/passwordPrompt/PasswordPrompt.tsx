@@ -7,6 +7,12 @@ import { useSessionUserProfileContext } from "@/app/hooks/useSessionUserProfileC
 
 import passwordPromptStyles from "./passwordPrompt.module.scss";
 import { generateKeyPair } from "@/utils/crypto/generateKeyPair";
+import {
+  NEW_PASSWORD_PROMPT_DESCRIPTION,
+  RENTER_PASSWORD_PROMPT_DESCRIPTION,
+} from "@/app/constants";
+import { IUserProfile } from "@/types/entities";
+import { decryptPrivateKey } from "@/utils/crypto/decryptPrivateKey";
 
 function PasswordPrompt() {
   const hasFetchedRef = useRef(false);
@@ -28,13 +34,55 @@ function PasswordPrompt() {
       return;
     }
 
+    setError("");
+
+    if (
+      sessionUserProfile.publicKey &&
+      sessionUserProfile.encryptedPrivateKey
+    ) {
+      try {
+        const decryptedPrivateKey = await decryptPrivateKey(
+          sessionUserProfile.encryptedPrivateKey,
+          passwordContent
+        );
+
+        if (!decryptedPrivateKey) {
+          setError("You submitted the wrong password. Try again");
+          return;
+        }
+
+        setSessionUserProfile((prevSessionUserProfile: IUserProfile | null) => {
+          if (prevSessionUserProfile) {
+            return {
+              ...prevSessionUserProfile,
+              secret: passwordContent,
+            };
+          }
+          return null;
+        });
+
+        // logger.log({ decryptedPrivateKey });
+        setIsPasswordPromptVisible(false);
+      } catch (error: unknown) {
+        const errorString = `Error using the re-entered password`;
+        setError(errorString);
+        logger.error(errorString, error);
+      } finally {
+        setPasswordContent("");
+        return;
+      }
+    }
+
     try {
       hasFetchedRef.current = true;
-      setError("");
 
       const { encryptedPrivateKey, publicKeyBase64 } = await generateKeyPair(
         passwordContent
       );
+
+      if (!encryptedPrivateKey || !publicKeyBase64) {
+        throw new Error("Key pair generation failed");
+      }
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/users/${sessionUserProfile.id}`,
@@ -63,10 +111,10 @@ function PasswordPrompt() {
       if (newUserProfile.publicKey) {
         setIsPasswordPromptVisible(false);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       const errorString = `User profile update error: ${error}`;
       setError(errorString);
-      logger.error(errorString);
+      logger.error(errorString, error);
     } finally {
       setPasswordContent("");
     }
@@ -77,7 +125,9 @@ function PasswordPrompt() {
   ) : (
     <div className={passwordPromptStyles.passwordPromptContainer}>
       <div className={passwordPromptStyles.title}>
-        Enter a password to enable end-to-end encrypted messaging
+        {sessionUserProfile.publicKey
+          ? RENTER_PASSWORD_PROMPT_DESCRIPTION
+          : NEW_PASSWORD_PROMPT_DESCRIPTION}
       </div>
       <form
         className={passwordPromptStyles.inputAndButtonContainer}

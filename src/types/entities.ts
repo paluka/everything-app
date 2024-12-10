@@ -62,6 +62,7 @@ export interface IConversationMessage {
 
   encryptedContentForSender: string;
   encryptedContentForReceiver: string;
+
   decryptedContent?: string;
 }
 

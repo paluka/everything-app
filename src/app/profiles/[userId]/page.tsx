@@ -309,9 +309,11 @@ const ProfilePage = () => {
                 </button>
               )}
 
-              <button onClick={() => messageUser(userProfile?.id)}>
-                Message
-              </button>
+              {userProfile?.publicKey && (
+                <button onClick={() => messageUser(userProfile?.id)}>
+                  Message
+                </button>
+              )}
             </>
           )}
 

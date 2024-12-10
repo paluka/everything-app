@@ -5,7 +5,7 @@ export const countUnreadMessages = (
   userId: string | undefined
 ): number => {
   if (!userId || !messages.length) {
-    // console.log(
+    // logger.error(
     //   "No messages or userId in countUnreadMessages utility function"
     // );
 
@@ -19,6 +19,6 @@ export const countUnreadMessages = (
       message.senderId !== userId
   ).length;
 
-  // console.log({ unreadCount, messages });
+  // logger.log({ unreadCount, messages });
   return unreadCount;
 };

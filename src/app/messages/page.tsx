@@ -24,6 +24,7 @@ import { useSessionUserProfileContext } from "../hooks/useSessionUserProfileCont
 import { decryptPrivateKey } from "@/utils/crypto/decryptPrivateKey";
 import { decryptMessage } from "@/utils/crypto/decryptMessage";
 import logger from "@/utils/logger";
+import { MESSAGE_DECRYPTION_ERROR_STRING } from "../constants";
 
 const CONTEXT_MENU_HEIGHT = 40;
 
@@ -105,21 +106,32 @@ function Messages() {
         logger.error("Unable to add new sent messages", { sessionUserProfile });
         return;
       }
-      const decryptedPrivateKey = await decryptPrivateKey(
-        sessionUserProfile.encryptedPrivateKey,
-        sessionUserProfile.secret
-      );
 
-      const decryptedMessageContent = await decryptMessage(
-        newMessage.senderId == sessionUserProfile.id
-          ? newMessage.encryptedContentForSender
-          : newMessage.encryptedContentForReceiver,
-        decryptedPrivateKey
-      );
+      try {
+        const decryptedPrivateKey = await decryptPrivateKey(
+          sessionUserProfile.encryptedPrivateKey,
+          sessionUserProfile.secret
+        );
 
-      logger.log(`Decrypted message content`, decryptedMessageContent);
+        if (!decryptedPrivateKey) {
+          throw new Error("decryptedPrivateKey is null");
+        }
 
-      newMessage.decryptedContent = decryptedMessageContent;
+        const decryptedMessageContent = await decryptMessage(
+          newMessage.senderId == sessionUserProfile.id
+            ? newMessage.encryptedContentForSender
+            : newMessage.encryptedContentForReceiver,
+          decryptedPrivateKey
+        );
+
+        logger.log(`Decrypted message content`, decryptedMessageContent);
+
+        newMessage.decryptedContent = decryptedMessageContent;
+      } catch (error: unknown) {
+        logger.error(
+          `Error decrypting message for sender ${newMessage.sender.name}`
+        );
+      }
 
       if (newMessage.conversationId === lastOpenConversationId) {
         setOpenConversation((prevConversation: IConversation | null) => {
@@ -296,7 +308,7 @@ function Messages() {
   []);
 
   const handleOpenConversation = useCallback(
-    function (conversation: IConversation) {
+    async function (conversation: IConversation) {
       if (!userIdString || conversation.id === lastOpenConversationId) {
         return;
       }
@@ -305,17 +317,123 @@ function Messages() {
         (participantItem) => participantItem.userId != sessionUserProfile?.id
       );
 
+      let messageReceiverUser: IUserProfile;
+
       if (messageReceiver.length > 0) {
         setMessageReceiverUserProfile(messageReceiver[0].user);
+        messageReceiverUser = messageReceiver[0].user;
+
+        logger.log(`Message receiver in handle open conversation`, {
+          messageReceiver,
+          messageReceiverUser,
+        });
       }
 
       emitMessageStatusToRead(conversation, userIdString);
-      // TODO
-      // conversation.messages.forEach((messageItem) => {
-      //   if (messageItem.senderId == sessionUserProfile?.id) {
-      //     messageItem.decryptedContent =
-      //   }
-      // })
+
+      logger.log(`Handle open conversation. Conversation messages before`, {
+        messages: conversation.messages,
+      });
+
+      conversation.messages = await Promise.all(
+        conversation.messages.map(
+          async (messageItem): Promise<IConversationMessage> => {
+            // for (const messageItem of conversation.messages) {
+            // conversation.messages.forEach(async (messageItem) => {
+
+            // logger.log(
+            //   sessionUserProfile,
+            //   messageItem.senderId,
+            //   sessionUserProfile?.id,
+            //   sessionUserProfile?.encryptedPrivateKey,
+            //   sessionUserProfile?.secret,
+            //   messageReceiverUser,
+            //   messageItem.senderId,
+            //   messageReceiverUser?.id
+            // );
+            if (
+              sessionUserProfile &&
+              messageItem.senderId == sessionUserProfile.id &&
+              sessionUserProfile.encryptedPrivateKey &&
+              sessionUserProfile.secret
+            ) {
+              try {
+                logger.log("Inside the sender block decryption");
+
+                const decryptedPrivateKey = await decryptPrivateKey(
+                  sessionUserProfile.encryptedPrivateKey,
+                  sessionUserProfile.secret
+                );
+
+                if (!decryptedPrivateKey) {
+                  throw new Error("decryptedPrivateKey is null");
+                }
+
+                logger.log("Decrypted the private key", decryptedPrivateKey);
+
+                const decryptedContent = await decryptMessage(
+                  messageItem.encryptedContentForSender,
+                  decryptedPrivateKey
+                );
+
+                logger.log(`Decrypted content for sender:`, decryptedContent);
+
+                return {
+                  ...messageItem,
+                  decryptedContent,
+                };
+              } catch (error: unknown) {
+                logger.error(
+                  `Error decrypting message for sender ${messageItem.sender.name}`
+                );
+                return messageItem;
+              }
+            } else if (
+              messageReceiverUser &&
+              messageItem.senderId == messageReceiverUser.id &&
+              sessionUserProfile &&
+              sessionUserProfile.encryptedPrivateKey &&
+              sessionUserProfile.secret
+            ) {
+              try {
+                logger.log("Inside the receiver block decryption");
+
+                const decryptedPrivateKey = await decryptPrivateKey(
+                  sessionUserProfile.encryptedPrivateKey,
+                  sessionUserProfile.secret
+                );
+
+                logger.log("Decrypted the private key", decryptedPrivateKey);
+
+                if (!decryptedPrivateKey) {
+                  throw new Error("decryptedPrivateKey is null");
+                }
+
+                const decryptedContent = await decryptMessage(
+                  messageItem.encryptedContentForReceiver,
+                  decryptedPrivateKey
+                );
+
+                logger.log(`Decrypted content for receiver:`, decryptedContent);
+
+                return {
+                  ...messageItem,
+                  decryptedContent,
+                };
+              } catch (error: unknown) {
+                logger.error(
+                  `Error decrypting message for sender ${messageItem.sender.name}`
+                );
+                return messageItem;
+              }
+            }
+            return messageItem;
+          }
+        )
+      );
+      logger.log(`Handle open conversation. Conversation messages after`, {
+        messages: conversation.messages,
+      });
       setOpenConversation(conversation);
       setLastOpenConversationId(conversation.id);
 
@@ -325,7 +443,7 @@ function Messages() {
       userIdString,
       lastOpenConversationId,
       emitMessageStatusToRead,
-      sessionUserProfile?.id,
+      sessionUserProfile,
     ]
   );
 
